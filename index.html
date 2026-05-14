@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WKA Document Checker</title>
   <script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     :root {
       --primary: #1a56db;
@@ -99,6 +100,13 @@
     .spin{display:inline-block;width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
     @keyframes sp{to{transform:rotate(360deg)}}
 
+    /* Progress */
+    .progress-wrap{margin-bottom:14px;display:none}
+    .progress-label{font-size:12px;color:var(--gr-fg);margin-bottom:5px}
+    .progress-bar{height:7px;background:var(--border);border-radius:4px;overflow:hidden}
+    .progress-fill{height:100%;background:var(--primary);border-radius:4px;transition:width .3s;width:0%}
+    .ocr-badge{display:inline-block;padding:2px 8px;background:#eff6ff;color:var(--primary);border-radius:10px;font-size:11px;font-weight:700;margin-left:8px}
+
     #results{display:none}
   </style>
 </head>
@@ -116,7 +124,13 @@
     <div class="ico">📄</div>
     <div class="hint"><b>Cliquez pour sélectionner</b> ou glissez le dossier PDF client ici</div>
   </div>
-  <div class="pill" id="pill" style="display:none">📎 <span id="fname"></span></div>
+  <div class="pill" id="pill" style="display:none">📎 <span id="fname"></span><span class="ocr-badge" id="ocrBadge" style="display:none">OCR</span></div>
+
+  <!-- Progress bar (shown during OCR) -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-label" id="progressLabel">Initialisation…</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
 
   <!-- Config form -->
   <div class="card">
@@ -208,8 +222,9 @@
           <tbody id="docTb"></tbody>
         </table>
         <div class="note">
-          ⚠️ <b>Carte ID et Carte bancaire</b> sont des scans d'images — impossible de détecter automatiquement. Vérification manuelle obligatoire.<br>
-          ℹ️ La détection se base sur les mots-clés dans le texte du PDF. Un document scanné (image) sera toujours marqué comme non détecté même s'il est physiquement présent.
+          ⚠️ <b>Carte ID</b> est un scan d'image — vérification manuelle obligatoire (passeport accepté, jamais le permis).<br>
+          ℹ️ <b>Carte bancaire / RIB</b> : un Relevé d'Identité Bancaire (RIB) est détecté automatiquement. Une carte bancaire scannée (image) indique 👁 Manuel — vérifier manuellement que le CVC est masqué.<br>
+          ℹ️ La détection se base sur les mots-clés dans le texte OCR. Les PDFs entièrement scannés (images) sont traités par OCR automatique.
         </div>
       </div>
     </div>
@@ -243,6 +258,7 @@
   async function loadFile(file) {
     document.getElementById('fname').textContent = file.name;
     document.getElementById('pill').style.display = 'inline-flex';
+    document.getElementById('ocrBadge').style.display = 'none';
     goBtn.disabled = true;
     document.getElementById('btnTxt').textContent = 'Lecture du PDF…';
     try {
@@ -256,15 +272,74 @@
     }
   }
 
+  function setProgress(label, pct) {
+    document.getElementById('progressWrap').style.display = 'block';
+    document.getElementById('progressLabel').textContent = label;
+    document.getElementById('progressFill').style.width = pct + '%';
+  }
+  function hideProgress() {
+    document.getElementById('progressWrap').style.display = 'none';
+  }
+
   async function extractText(buf) {
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    let out = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
+    const totalPages = pdf.numPages;
+
+    // First pass: collect text-layer content per page
+    const pageTexts = [];
+    for (let i = 1; i <= totalPages; i++) {
       const page = await pdf.getPage(i);
       const c = await page.getTextContent();
-      out += c.items.map(x => x.str).join(' ') + '\n';
+      const t = c.items.map(x => x.str).join(' ').trim();
+      pageTexts.push({ page, text: t, index: i });
     }
-    return out;
+
+    // Per-page approach: use OCR only for pages without sufficient text
+    const scannedPages = pageTexts.filter(p => p.text.length <= 30);
+
+    if (scannedPages.length === 0) {
+      // All pages have text layer — no OCR needed
+      return pageTexts.map(p => p.text).join('\n');
+    }
+
+    // Some or all pages need OCR
+    document.getElementById('ocrBadge').style.display = 'inline-block';
+    setProgress('Chargement OCR…', 2);
+
+    const worker = await Tesseract.createWorker('fra', 1, {
+      logger: m => {
+        if (m.status === 'loading tesseract core') {
+          setProgress('Chargement OCR…', Math.round((m.progress || 0) * 15));
+        } else if (m.status === 'loading language traineddata') {
+          setProgress('Téléchargement données linguistiques (~10 Mo)…', 15 + Math.round((m.progress || 0) * 20));
+        } else if (m.status === 'initializing api') {
+          setProgress('Préparation…', 35 + Math.round((m.progress || 0) * 5));
+        }
+      }
+    });
+
+    for (let i = 0; i < scannedPages.length; i++) {
+      const { page, index } = scannedPages[i];
+      const pct = 40 + Math.round((i / scannedPages.length) * 55);
+      setProgress(`OCR page ${index} / ${totalPages}…`, pct);
+
+      // Render page to canvas at 2x scale for better OCR accuracy
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas = document.createElement('canvas');
+      canvas.width  = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+      const result = await worker.recognize(canvas);
+      // Replace empty text-layer with OCR result for this page
+      pageTexts.find(p => p.index === index).text = result.data.text;
+    }
+
+    await worker.terminate();
+    setProgress('OCR terminé ✓', 100);
+    setTimeout(hideProgress, 1500);
+
+    return pageTexts.map(p => p.text).join('\n');
   }
 
   // ─── Run ─────────────────────────────────────────────────────
@@ -301,8 +376,8 @@
   // ─── Auto-detect deal type ────────────────────────────────────
   function autoDetectDeal(t, p) {
     const tl = t.toLowerCase();
-    const isVAT     = /assujetti\s+[àa]\s+la\s+tva|vendeur\s+est\s+assujetti|\bvat\b/i.test(t) && !/n'est\s+pas\s+assujetti/i.test(t);
-    const isMarge   = /r[eé]gime\s+de\s+la\s+taxation\s+sur\s+la\s+marge|n'est\s+pas\s+assujetti/i.test(t);
+    const isVAT     = /assujetti\s+[àa]\s+la\s+tva|vendeur\s+est\s+assujetti|\bvat\b/i.test(t) && !/n.est\s+pas\s+assujetti/i.test(t);
+    const isMarge   = /taxation\s+sur\s+la\s+marge|r[eé]gime\s+de\s+la\s+marge|n.est\s+pas\s+assujetti/i.test(t);
     const hasFin    = /formulaire\s+d.autorisation|remise.*financement|sous\s+financement/i.test(t);
     const hasLease  = /leasing|bail\s+financier/i.test(t);
     const hasDeces  = /certificat\s+de\s+d[eé]c[eè]s|h[eé]r[eé]dit[eé]/i.test(t);
@@ -356,21 +431,23 @@
     const pl = t.match(/\b([1-9][A-Z]{3}[0-9]{3})\b/);
     if (pl) r.plate = pl[1];
 
-    // IBAN: BE + 14 digits (not VAT number which is BE + 10)
-    const ib = t.match(/\bBE\d{14}\b/);
-    if (ib) r.iban = ib[0];
+    // IBAN: BE + 14 digits (not VAT = BE + 10 digits)
+    // Also handles spaced format: "BE74 0016 9320 3607" or "BE74001693203607"
+    const ib = t.match(/\bBE\d{2}(?:\s?\d{4}){3}\b/) || t.match(/\bBE\d{14}\b/);
+    if (ib) r.iban = ib[0].replace(/\s/g,'');
 
     // BIC/Bank
     const bic = t.match(/\b([A-Z]{4}BE[A-Z0-9]{2,5})\b/);
     if (bic) r.bic = bic[1];
 
-    // Price (after "Prix d'achat", Belgian format: dots = thousands)
-    const pm = t.match(/Prix\s+d[''´]achat[^0-9]{0,40}([\d]{1,3}(?:\.\d{3})*(?:,\d{1,2})?)\s*EUR/i)
-            || t.match(/([\d]{1,3}(?:\.\d{3})+)\s*EUR/);
+    // Price (after "Prix d'achat", Belgian format: dots or spaces = thousands, comma = decimal)
+    // Handles: "28.045 EUR", "28 045,00 €", "863 €", "863 EUR"
+    const pm = t.match(/Prix\s+d[''´']achat[^0-9]{0,40}([\d]{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?)\s*(?:EUR|€)/i)
+            || t.match(/([\d]{1,3}(?:\.\d{3})+)\s*(?:EUR|€)/);
     if (pm) {
-      const raw = pm[1].replace(/\./g,'').replace(',','.');
+      const raw = pm[1].replace(/[\s.]+/g,'').replace(',','.');
       r.priceNum = parseFloat(raw);
-      r.price    = pm[1] + ' EUR';
+      r.price    = pm[1].replace(/\s+/g,'.') + ' EUR';
     }
 
     // Dates: past = first reg, future = next CT, current year = ignore (deposit)
@@ -407,27 +484,43 @@
   // ─── Detect documents present ─────────────────────────────────
   function detectDocs(t) {
     const has = rx => rx.test(t);
+
+    // Attestation TVA: count occurrences to distinguish avec/sans versions.
+    // The protocol lists them as "Certificat de TVA avec prix" and "Certificat de TVA sans prix".
+    // The actual documents both have title "ATTESTATION TVA" (no avec/sans in title).
+    const attCount = (t.match(/attestation\s+tva/gi) || []).length;
+    // "avec prix" = protocol explicitly names it, OR there's an attestation TVA AND a price line
+    const attWithPrice = /(?:certificat|attestation)\s+(?:de\s+)?tva\s+avec\s+prix/i.test(t)
+                      || (attCount >= 1 && /Prix\s+d.achat\s+[\d]/i.test(t));
+    const attSansPhrase = /(?:certificat|attestation)\s+(?:de\s+)?tva\s+sans\s+prix/i.test(t);
+
+    // RIB = Relevé d'Identité Bancaire (bank proof, text-readable)
+    // Also detect labeled IBAN field from bank card OCR
+    const hasRIB = /relev[eé]\s+d.identit[eé]\s+bancaire|\bRIB\b/i.test(t);
+    const hasLabeledIBAN = /num[eé]ro\s+de\s+compte\s*\(?IBAN\)?|IBAN\s*:\s*BE\d|\bIBAN\s+BE\d/i.test(t);
+
     return {
-      contrat:          has(/Contrat\s+(d[''´]achat|n[°o]\.?\s*\w)/i),
+      contrat:          has(/Contrat\s+(d[''´']achat|n[°o]\.?\s*\w)/i),
       cond_gen:         has(/conditions\s+g[eé]n[eé]rales/i),
       lu_approuve:      has(/lu\s+et\s+approuv[eé]/i),
-      protocol:         has(/protocole?|hand[\s-]?over/i),
-      attest_avec:      detectTVAavec(t),
-      attest_sans:      has(/attestation\s+tva\b[^.\n]*sans\s+prix/i) || has(/attestation\s+tva\s+sans/i),
-      decl_honneur:     has(/d[eé]claration\s+sur\s+(l[''´])?honneur/i),
+      protocol:         has(/protocole?\s+de\s+remise|hand[\s-]?over/i),
+      attest_avec:      attCount >= 2 || attWithPrice,
+      attest_sans:      attCount >= 2 || attSansPhrase,
+      decl_honneur:     has(/d[eé]claration\s+sur\s+(l[''´'])?honneur/i),
       ctrl_tech:        has(/contr[oô]le\s+technique/i),
-      coc:              has(/certificat\s+de\s+conformit[eé]|\bC\.?O\.?C\.?\b/),
-      cert_immat:       has(/certificat\s+d[''´]immatriculation/i),
-      decl_hon_art44:   has(/d[eé]claration\s+sur\s+(l[''´])?honneur.*art[\s.]*44/i) || (has(/d[eé]claration\s+sur\s+(l[''´])?honneur/i) && has(/art[\s.]*44/i)),
+      // COC: French title, Dutch title (EG-Certificaat van overeenstemming), or acronym
+      coc:              has(/certificat\s+de\s+conformit[eé]|overeenstemming|\bC\.?O\.?C\.?\b/i),
+      cert_immat:       has(/certificat\s+d[''´']immatriculation/i),
+      decl_hon_art44:   has(/d[eé]claration\s+sur\s+(l[''´'])?honneur.*art[\s.]*44/i) || (has(/d[eé]claration\s+sur\s+(l[''´'])?honneur/i) && has(/art[\s.]*44/i)),
       attest_art44:     has(/attestation\s+tva.*art[\s.]*44/i) || (has(/attestation\s+tva/i) && has(/art[\s.]*44/i)),
-      form_autorisation:has(/formulaire\s+d[''´]autorisation\s+de\s+reprise/i),
-      facture_achat:    has(/facture\s+d[''´]achat/i),
+      form_autorisation:has(/formulaire\s+d[''´']autorisation\s+de\s+reprise/i),
+      facture_achat:    has(/facture\s+d[''´']achat/i),
       preuve_paiement:  has(/preuve\s+de\s+paiement/i),
       facture_vente:    has(/facture\s+(de\s+vente|tva)/i),
       solde_ouvert:     has(/solde\s+ouvert/i),
       facture_sortie:   has(/facture\s+de\s+sortie|facture\s+interm[eé]diaire/i),
       cert_deces:       has(/certificat\s+de\s+d[eé]c[eè]s/i),
-      cert_heredite:    has(/certificat\s+d[''´]h[eé]r[eé]dit[eé]|acte\s+d[''´]h[eé]r[eé]dit[eé]/i),
+      cert_heredite:    has(/certificat\s+d[''´']h[eé]r[eé]dit[eé]|acte\s+d[''´']h[eé]r[eé]dit[eé]/i),
       procuration:      has(/procuration/i),
       e705:             has(/e[\s-]?705/i),
       coa:              has(/\bCO-?A\b/i),
@@ -435,15 +528,10 @@
       facture_fin_lease:has(/facture\s+de\s+fin\s+de\s+leasing/i),
       doc_vente_tiers:  has(/vente\s+[àa]\s+un\s+tiers/i),
       proforma:         has(/proforma/i),
-      carte_id:         null,  // image scan
-      carte_banc:       null,  // image scan
+      carte_id:         null,  // always a scanned image
+      // Bank proof: RIB document (text) or labeled IBAN field from bank card OCR; else manual
+      carte_banc:       (hasRIB || hasLabeledIBAN) ? true : null,
     };
-  }
-
-  function detectTVAavec(t) {
-    if (!/attestation\s+tva\b/i.test(t)) return false;
-    const matches = [...t.matchAll(/attestation\s+tva\b([^\n.]{0,80})/gi)];
-    return matches.some(m => !/sans\s+prix/i.test(m[1]));
   }
 
   // ─── Required docs per deal type (from WKA document) ─────────
