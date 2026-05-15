@@ -223,7 +223,7 @@
         </table>
         <div class="note">
           ⚠️ <b>Carte ID</b> — scan image, vérification manuelle obligatoire (passeport accepté, jamais le permis).<br>
-          ⚠️ <b>Certificat d'immatriculation</b> — le nombre de volets ne peut pas être vérifié automatiquement. Confirmer manuellement que les 2 volets sont présents (1 volet accepté si immatriculé avant 2013).<br>
+          ℹ️ <b>Certificat d'immatriculation</b> — les mentions "Deel I/II" (NL) ou "Partie I/II" (FR) sont détectées automatiquement. Si les deux volets sont présents → ✅. Un seul volet → ❌. Aucun identifiant trouvé → 👁 Manuel (vérifier manuellement). 1 volet accepté si immatriculé avant 2013.<br>
           ℹ️ <b>Carte bancaire / RIB</b> — un RIB (Relevé d'Identité Bancaire) textuel est détecté automatiquement. Une carte bancaire scannée indique 👁 Manuel — vérifier que le CVC est masqué.<br>
           ℹ️ <b>Facture d'achat / Preuve de paiement</b> — si mentionnés uniquement dans le protocole comme "à fournir", ils sont correctement marqués comme manquants.<br>
           ℹ️ La détection se base sur les mots-clés dans le texte OCR. Les PDFs entièrement scannés sont traités par OCR automatique.
@@ -534,8 +534,15 @@
       doc_vente_tiers:  has(/vente\s+[àa]\s+un\s+tiers/i),
       proforma:         has(/proforma/i),
       carte_id:         null,  // always a scanned image
-      // cert_immat: cannot tell if 1 or 2 volets are physically present → always manual
-      cert_immat:       null,
+      // cert_immat: detect volets via language-specific part labels
+      // NL: "Deel I" / "Deel II" — FR: "Partie I" / "Partie II" — DE: "Teil I" / "Teil II"
+      cert_immat: (() => {
+        const hasV1 = /\bDeel\s+I\b|\bPartie\s+I\b|\bTeil\s+I\b/i.test(t);
+        const hasV2 = /\bDeel\s+II\b|\bPartie\s+II\b|\bTeil\s+II\b/i.test(t);
+        // If no part label found at all, fall back to manual check
+        if (!hasV1 && !hasV2) return null;
+        return hasV1 && hasV2;
+      })(),
       // Bank proof: RIB document (text) or labeled IBAN field from bank card OCR; else manual
       carte_banc:       (hasRIB || hasLabeledIBAN) ? true : null,
     };
