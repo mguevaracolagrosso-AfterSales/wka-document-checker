@@ -223,7 +223,7 @@
         </table>
         <div class="note">
           ⚠️ <b>Carte ID</b> — scan image, vérification manuelle obligatoire (passeport accepté, jamais le permis).<br>
-          ℹ️ <b>Certificat d'immatriculation</b> — les mentions "Deel I/II" (NL) ou "Partie I/II" (FR) sont détectées automatiquement. Si les deux volets sont présents → ✅. Un seul volet → ❌. Aucun identifiant trouvé → 👁 Manuel (vérifier manuellement). 1 volet accepté si immatriculé avant 2013.<br>
+          ℹ️ <b>Certificat d'immatriculation</b> — Volet 1 (Deel I / Partie I) et Volet 2 (Deel II / Partie II) sont détectés séparément. ✅ si trouvé, ❌ si absent, 👁 Manuel si aucun identifiant de volet n'est trouvé dans le PDF. 1 volet accepté si immatriculé avant 2013.<br>
           ℹ️ <b>Carte bancaire / RIB</b> — un RIB (Relevé d'Identité Bancaire) textuel est détecté automatiquement. Une carte bancaire scannée indique 👁 Manuel — vérifier que le CVC est masqué.<br>
           ℹ️ <b>Facture d'achat / Preuve de paiement</b> — si mentionnés uniquement dans le protocole comme "à fournir", ils sont correctement marqués comme manquants.<br>
           ℹ️ La détection se base sur les mots-clés dans le texte OCR. Les PDFs entièrement scannés sont traités par OCR automatique.
@@ -534,14 +534,18 @@
       doc_vente_tiers:  has(/vente\s+[àa]\s+un\s+tiers/i),
       proforma:         has(/proforma/i),
       carte_id:         null,  // always a scanned image
-      // cert_immat: detect volets via language-specific part labels
+      // cert_immat_1 / cert_immat_2: detect each volet via language-specific part labels
       // NL: "Deel I" / "Deel II" — FR: "Partie I" / "Partie II" — DE: "Teil I" / "Teil II"
-      cert_immat: (() => {
-        const hasV1 = /\bDeel\s+I\b|\bPartie\s+I\b|\bTeil\s+I\b/i.test(t);
-        const hasV2 = /\bDeel\s+II\b|\bPartie\s+II\b|\bTeil\s+II\b/i.test(t);
-        // If no part label found at all, fall back to manual check
-        if (!hasV1 && !hasV2) return null;
-        return hasV1 && hasV2;
+      // If no volet label found at all → null (manual). If found → true/false per volet.
+      cert_immat_1: (() => {
+        const hasAny = /\b(?:Deel|Partie|Teil)\s+I{1,2}\b/i.test(t);
+        if (!hasAny) return null;
+        return /\bDeel\s+I\b|\bPartie\s+I\b|\bTeil\s+I\b/i.test(t);
+      })(),
+      cert_immat_2: (() => {
+        const hasAny = /\b(?:Deel|Partie|Teil)\s+I{1,2}\b/i.test(t);
+        if (!hasAny) return null;
+        return /\bDeel\s+II\b|\bPartie\s+II\b|\bTeil\s+II\b/i.test(t);
       })(),
       // Bank proof: RIB document (text) or labeled IBAN field from bank card OCR; else manual
       carte_banc:       (hasRIB || hasLabeledIBAN) ? true : null,
@@ -562,7 +566,8 @@
       { key:'carte_banc',   label:'Carte bancaire (CVC obligatoirement masqué)',  note:'' },
       { key:'ctrl_tech',    label:'Contrôle technique',                           note:'Expiré accepté si < 1 an. CT rouge accepté si pris en compte dans expertise' },
       { key:'coc',          label:'COC (Certificat de conformité)',               note:'Vérifier correspondance VIN' },
-      { key:'cert_immat',   label:"Certificat d'immatriculation (2 volets)",      note:'1 volet si immatriculé avant 2013' },
+      { key:'cert_immat_1', label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'1 volet accepté si immatriculé avant 2013' },
+      { key:'cert_immat_2', label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'1 volet accepté si immatriculé avant 2013' },
     ];
 
     const base_vat = [
@@ -575,7 +580,8 @@
       { key:'carte_banc',   label:'Carte bancaire ou relevé d\'identité bancaire',note:'' },
       { key:'ctrl_tech',    label:'Contrôle technique',                           note:'' },
       { key:'coc',          label:'COC (Certificat de conformité)',               note:'' },
-      { key:'cert_immat',   label:"Certificat d'immatriculation (2 volets)",      note:'' },
+      { key:'cert_immat_1', label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
+      { key:'cert_immat_2', label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
       { key:'facture_vente',label:'Facture de vente avec TVA (21% ou 50%)',       note:'Taux à vérifier dans Admin' },
     ];
 
@@ -599,7 +605,8 @@
         { key:'carte_banc',       label:'Carte bancaire',             note:'' },
         { key:'ctrl_tech',        label:'Contrôle technique',         note:'' },
         { key:'coc',              label:'COC',                        note:'' },
-        { key:'cert_immat',       label:"Certificat d'immatriculation (2 volets)", note:'' },
+        { key:'cert_immat_1',     label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
+        { key:'cert_immat_2',     label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
         { key:'facture_achat',    label:"Facture d'achat",            note:'' },
         { key:'solde_ouvert',     label:'Solde ouvert du prêt',       note:'Pour banques collatérales uniquement' },
       ],
@@ -616,7 +623,8 @@
         { key:'carte_banc',       label:'Carte bancaire',             note:'' },
         { key:'ctrl_tech',        label:'Contrôle technique',         note:'' },
         { key:'coc',              label:'COC',                        note:'' },
-        { key:'cert_immat',       label:"Certificat d'immatriculation (2 volets)", note:'' },
+        { key:'cert_immat_1',     label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
+        { key:'cert_immat_2',     label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
         { key:'solde_ouvert',     label:'Solde ouvert du prêt',       note:'Banques collatérales uniquement. PAS de facture d\'achat pour ce type' },
       ],
 
@@ -644,7 +652,8 @@
         { key:'carte_banc',       label:'Carte bancaire ou relevé bancaire',      note:'' },
         { key:'ctrl_tech',        label:'Contrôle technique',         note:'' },
         { key:'coc',              label:'COC',                        note:'' },
-        { key:'cert_immat',       label:"Certificat d'immatriculation (2 volets)", note:'' },
+        { key:'cert_immat_1',     label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
+        { key:'cert_immat_2',     label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
         { key:'facture_vente',    label:'Facture de vente TVA 0%',   note:'Doit mentionner Art. Contribuable exonéré art.44' },
       ],
 
@@ -666,7 +675,8 @@
         { key:'carte_banc',       label:'Carte bancaire',             note:'IMPORTANT: ne pas retirer bloc VAT avant que le financement soit traité' },
         { key:'ctrl_tech',        label:'Contrôle technique',         note:'' },
         { key:'coc',              label:'COC',                        note:'' },
-        { key:'cert_immat',       label:"Certificat d'immatriculation (2 volets)", note:'' },
+        { key:'cert_immat_1',     label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
+        { key:'cert_immat_2',     label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
         { key:'facture_achat',    label:"Facture d'achat",            note:'' },
         { key:'solde_ouvert',     label:'Solde ouvert du prêt',       note:'Banques collatérales uniquement' },
         { key:'facture_vente',    label:'Facture de vente TVA (21%/50%/0%)', note:'' },
@@ -683,7 +693,8 @@
         { key:'carte_banc',        label:'Carte bancaire',            note:'Mettre le lead en Status 0 — WKA n\'intervient pas pour le paiement' },
         { key:'ctrl_tech',         label:'Contrôle technique',        note:'' },
         { key:'coc',               label:'COC',                       note:'' },
-        { key:'cert_immat',        label:"Certificat d'immatriculation (2 volets)", note:'' },
+        { key:'cert_immat_1',      label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
+        { key:'cert_immat_2',      label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
         { key:'facture_fin_lease', label:'Facture de fin de leasing', note:'' },
         { key:'preuve_paiement',   label:'Preuve de paiement correspondante', note:'' },
       ],
@@ -699,7 +710,8 @@
         { key:'carte_banc',       label:'Carte bancaire',             note:'' },
         { key:'ctrl_tech',        label:'Contrôle technique',         note:'' },
         { key:'coc',              label:'COC',                        note:'' },
-        { key:'cert_immat',       label:"Certificat d'immatriculation (2 volets)", note:'' },
+        { key:'cert_immat_1',     label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
+        { key:'cert_immat_2',     label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
         { key:'doc_vente_tiers',  label:'Document de vente à un tiers', note:'PAS de facture d\'achat ni facture TVA — la proforma en tient lieu' },
         { key:'proforma',         label:'Facture Proforma',           note:'À mettre dans Admin sous "Financement" et "Facture client". Évaluation obligatoirement TVA 21%' },
       ],
@@ -710,7 +722,7 @@
       ],
 
       lux_marge: [
-        ...base_marge.filter(d => d.key !== 'cert_immat'),
+        ...base_marge.filter(d => d.key !== 'cert_immat_1' && d.key !== 'cert_immat_2'),
         { key:'desimmat', label:'Certificat de désimmatriculation (Luxembourg)', note:'Le véhicule ne doit plus être enregistré au Luxembourg' },
       ],
 
