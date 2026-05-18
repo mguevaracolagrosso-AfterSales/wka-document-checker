@@ -7,7 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;padding:24px 20px;max-width:1100px;margin:0 auto;line-height:1.5}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;padding:24px 20px;max-width:960px;margin:0 auto;line-height:1.5}
 h1{font-size:21px;font-weight:700;margin-bottom:4px}
 .subtitle{font-size:12px;opacity:.5;margin-bottom:28px}
 section{margin-bottom:28px}
@@ -20,18 +20,17 @@ section{margin-bottom:28px}
 .input-group input{width:100%;padding:9px 11px;border:1px solid rgba(128,128,128,.25);border-radius:7px;font-size:14px;font-family:inherit;background:transparent;color:inherit}
 .input-group input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
 
-/* Upload zones */
-.doc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:10px}
-.upload-zone{border:2px dashed rgba(128,128,128,.25);border-radius:9px;padding:15px 14px;text-align:center;position:relative;cursor:pointer;transition:border-color .15s,background .15s;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+/* Single upload zone */
+.upload-zone{border:2px dashed rgba(128,128,128,.25);border-radius:10px;padding:32px 24px;text-align:center;position:relative;cursor:pointer;transition:border-color .15s,background .15s}
 .upload-zone:hover{border-color:#3b82f6;background:rgba(59,130,246,.04)}
 .upload-zone.has-file{border-style:solid;border-color:#22c55e;background:rgba(34,197,94,.04)}
 .upload-zone.drag-over{border-color:#3b82f6;background:rgba(59,130,246,.07)}
 .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.uz-icon{font-size:22px;line-height:1}
-.uz-name{font-weight:600;font-size:13px}
-.uz-desc{font-size:11px;opacity:.45}
-.uz-fname{font-size:11px;color:#16a34a;font-weight:500;margin-top:2px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.uz-multi-hint{font-size:10px;opacity:.45;margin-top:2px}
+.uz-icon{font-size:32px;margin-bottom:10px}
+.uz-name{font-weight:600;font-size:15px;margin-bottom:4px}
+.uz-desc{font-size:12px;opacity:.45}
+.uz-fname{font-size:12px;color:#16a34a;font-weight:500;margin-top:8px}
+.ocr-note{font-size:11px;opacity:.45;margin-top:8px}
 
 /* Run button */
 #verify-btn{width:100%;padding:13px;background:#1d4ed8;color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:28px;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
@@ -40,6 +39,9 @@ section{margin-bottom:28px}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* Progress */
+#progress{font-size:12px;opacity:.6;text-align:center;margin-top:-20px;margin-bottom:20px;min-height:18px}
+
 /* Results */
 .overall-banner{padding:12px 16px;border-radius:8px;font-weight:700;font-size:14px;margin-bottom:20px;display:flex;align-items:center;gap:10px}
 .overall-banner.pass{background:rgba(34,197,94,.12);color:#15803d;border:1px solid rgba(34,197,94,.3)}
@@ -47,36 +49,24 @@ section{margin-bottom:28px}
 .overall-banner.fail{background:rgba(239,68,68,.1);color:#991b1b;border:1px solid rgba(239,68,68,.3)}
 .banner-counts{font-size:12px;font-weight:400;opacity:.75;margin-left:auto}
 
-.doc-result{margin-bottom:12px;border:1px solid rgba(128,128,128,.15);border-radius:9px;overflow:hidden}
+.doc-result{margin-bottom:10px;border:1px solid rgba(128,128,128,.15);border-radius:9px;overflow:hidden}
 .doc-result-header{padding:10px 14px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:13px;cursor:pointer;user-select:none}
-.doc-result-header:hover{filter:brightness(.97)}
 .doc-result-body{padding:10px 14px;border-top:1px solid rgba(128,128,128,.12)}
 .checks{list-style:none;display:flex;flex-direction:column;gap:5px}
 .checks li{font-size:12.5px;display:flex;gap:8px;align-items:flex-start}
 .ci{flex-shrink:0;width:16px;text-align:center;line-height:1.5}
 .cl{flex:1}
 .cl strong{font-weight:600}
+.page-badge{font-size:10px;opacity:.5;font-weight:400;margin-left:6px}
 
-/* Status colors for doc headers */
 .dh-pass{background:rgba(34,197,94,.08)}
 .dh-warn{background:rgba(234,179,8,.1)}
 .dh-fail{background:rgba(239,68,68,.09)}
 .dh-skip{background:rgba(128,128,128,.07)}
 
-/* OCR toggle */
-.ocr-row{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;opacity:.7}
-.ocr-row input[type=checkbox]{width:14px;height:14px;cursor:pointer}
+.overall-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;margin-bottom:16px}
 
-/* Summary table */
-.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:16px}
-.summary-card{padding:10px 14px;border-radius:7px;font-size:12px}
-.summary-card .sc-label{opacity:.6;margin-bottom:2px}
-.summary-card .sc-val{font-size:18px;font-weight:700}
-
-/* Print */
-@media print{#verify-btn,#doc-grid,#agent-section,.ocr-row{display:none}body{padding:0}section{margin-bottom:16px}}
-
-/* Dark mode tweaks */
+@media print{#verify-btn,#upload-section,#agent-section,.ocr-note,#progress{display:none}body{padding:0}section{margin-bottom:16px}}
 @media(prefers-color-scheme:dark){
   .input-group input{border-color:rgba(255,255,255,.2)}
   .doc-result{border-color:rgba(255,255,255,.1)}
@@ -94,7 +84,7 @@ section{margin-bottom:28px}
 
 <header>
   <h1>🚗 Belgian Car Sale Contract Verifier</h1>
-  <p class="subtitle">Enter client details manually, upload documents, then run automated verification</p>
+  <p class="subtitle">Enter client details, upload the complete contract PDF, then run verification</p>
 </header>
 
 <!-- Agent Inputs -->
@@ -104,35 +94,39 @@ section{margin-bottom:28px}
     <div class="input-grid">
       <div class="input-group">
         <label>Client Name *</label>
-        <input type="text" id="client-name" placeholder="e.g., Jan De Smet" autocomplete="off">
+        <input type="text" id="client-name" placeholder="e.g., John Doe" autocomplete="off">
       </div>
       <div class="input-group">
         <label>VIN *</label>
-        <input type="text" id="vin" placeholder="e.g., VF37J9HXCAJ716889" autocomplete="off" style="text-transform:uppercase">
+        <input type="text" id="vin" placeholder="e.g., WVWZZZ1JZXW000001" autocomplete="off" style="text-transform:uppercase">
       </div>
       <div class="input-group">
         <label>License Plate *</label>
-        <input type="text" id="plate" placeholder="e.g., 1CFI968" autocomplete="off" style="text-transform:uppercase">
+        <input type="text" id="plate" placeholder="e.g., 1ABC123" autocomplete="off" style="text-transform:uppercase">
       </div>
       <div class="input-group">
         <label>IBAN *</label>
-        <input type="text" id="iban" placeholder="e.g., BE68 5390 0754 7034" autocomplete="off">
+        <input type="text" id="iban" placeholder="e.g., BE00 0000 0000 0000" autocomplete="off">
       </div>
-    </div>
-    <div class="ocr-row">
-      <input type="checkbox" id="ocr-toggle">
-      <label for="ocr-toggle">Enable OCR for scanned/image-based PDFs (slower — loads Tesseract.js)</label>
     </div>
   </div>
 </section>
 
-<!-- Documents -->
-<section>
-  <div class="section-title">Documents</div>
-  <div class="doc-grid" id="doc-grid"></div>
+<!-- Single Upload -->
+<section id="upload-section">
+  <div class="section-title">Contract PDF</div>
+  <div class="upload-zone" id="upload-zone">
+    <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png,.tiff,.bmp">
+    <div class="uz-icon">📂</div>
+    <div class="uz-name">Upload complete contract PDF</div>
+    <div class="uz-desc">All sections in one file — Handover Protocol, Read &amp; Approved, Attestations, ID / Procura, Registration Certificate, Technical Control</div>
+    <div class="uz-fname" id="uz-fname"></div>
+    <div class="ocr-note">OCR enabled — scanned and image-based pages are supported</div>
+  </div>
 </section>
 
 <button id="verify-btn">▶ Run Verification</button>
+<div id="progress"></div>
 
 <!-- Results -->
 <section id="results" style="display:none">
@@ -148,116 +142,103 @@ section{margin-bottom:28px}
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ── Document types config ────────────────────────────────────────────────────
-const DOC_TYPES = [
-  { id:'handover', name:'Handover Protocol',       desc:'Koopovereenkomst / Contrat de vente',           icon:'📋', multiple:false },
-  { id:'readapp',  name:'Read & Approved',          desc:'Gelezen en goedgekeurd / Lu et approuvé',       icon:'✍️', multiple:false },
-  { id:'attest',   name:'Attestations',             desc:'3 attestations (1 multi-page PDF or 3 files)',  icon:'📑', multiple:true  },
-  { id:'id',       name:'ID / Procura',             desc:'Identity card(s) + power of attorney (if any)', icon:'🪪', multiple:false },
-  { id:'reg',      name:'Registration Certificate', desc:'Deel I+II / Partie I+II',                       icon:'📘', multiple:false },
-  { id:'tech',     name:'Technical Control',        desc:'Keuringsbewijs / Contrôle technique',           icon:'🔧', multiple:false },
-];
+let uploadedFile = null;
 
-const uploadedFiles = {};
+// ── Single upload zone setup ──────────────────────────────────────────────────
+(function(){
+  const zone  = document.getElementById('upload-zone');
+  const input = document.getElementById('file-input');
+  const fname = document.getElementById('uz-fname');
+  const set = f => {
+    if (!f) return;
+    uploadedFile = f;
+    zone.classList.add('has-file');
+    fname.textContent = f.name;
+  };
+  input.addEventListener('change', e => set(e.target.files[0]));
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); set(e.dataTransfer.files[0]); });
+})();
 
-// ── Render upload zones ───────────────────────────────────────────────────────
-function renderZones() {
-  const grid = document.getElementById('doc-grid');
-  grid.innerHTML = '';
-  DOC_TYPES.forEach(doc => {
-    const zone = document.createElement('div');
-    zone.className = 'upload-zone';
-    zone.id = 'zone-' + doc.id;
-    zone.innerHTML = `
-      <input type="file" id="file-${doc.id}" accept=".pdf,.jpg,.jpeg,.png,.tiff,.bmp" ${doc.multiple ? 'multiple' : ''}>
-      <div class="uz-icon">${doc.icon}</div>
-      <div class="uz-name">${doc.name}</div>
-      <div class="uz-desc">${doc.desc}</div>
-      ${doc.multiple ? '<div class="uz-multi-hint">Multiple files accepted</div>' : ''}
-      <div class="uz-fname" id="fname-${doc.id}"></div>
-    `;
-    const input = zone.querySelector('input');
-    const setFiles = fileList => {
-      if (!fileList.length) return;
-      uploadedFiles[doc.id] = doc.multiple ? fileList : fileList[0];
-      zone.classList.add('has-file');
-      const names = fileList.map(f => f.name).join(', ');
-      document.getElementById('fname-' + doc.id).textContent = names.length > 55 ? names.slice(0,52) + '…' : names;
-    };
-    input.addEventListener('change', e => setFiles(Array.from(e.target.files)));
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-    zone.addEventListener('drop', e => {
-      e.preventDefault(); zone.classList.remove('drag-over');
-      setFiles(Array.from(e.dataTransfer.files));
-    });
-    grid.appendChild(zone);
-  });
-}
-
-// ── PDF text extraction ───────────────────────────────────────────────────────
-async function extractPages(file) {
-  try {
-    const buf = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    const pages = [];
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const pg = await pdf.getPage(i);
-      const ct = await pg.getTextContent();
-      pages.push(ct.items.map(it => it.str).join(' '));
-    }
-    return { pages, numPages: pdf.numPages };
-  } catch(e) {
-    return { pages: [], numPages: 0, error: e.message };
-  }
-}
-
-// OCR via Tesseract (loaded on demand) ----------------------------------------
-let tesseractReady = false;
-async function loadTesseract() {
-  if (window.Tesseract) { tesseractReady = true; return; }
+// ── Tesseract loader ──────────────────────────────────────────────────────────
+let tesseractWorker = null;
+async function getTesseract() {
+  if (tesseractWorker) return tesseractWorker;
   await new Promise((res, rej) => {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
     s.onload = res; s.onerror = rej;
     document.head.appendChild(s);
   });
-  tesseractReady = true;
+  tesseractWorker = await Tesseract.createWorker('nld+fra+eng');
+  return tesseractWorker;
 }
 
-async function ocrFile(file) {
-  try {
-    await loadTesseract();
-    const { data: { text } } = await Tesseract.recognize(file, 'nld+fra+eng');
-    return text;
-  } catch(e) {
-    return '';
+// ── PDF extraction (per-page OCR fallback) ────────────────────────────────────
+async function extractAllPages(file, onProgress) {
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const results = [];
+  const tess = await getTesseract();
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    if (onProgress) onProgress(i, pdf.numPages);
+    const pg = await pdf.getPage(i);
+
+    // Text layer
+    const ct = await pg.getTextContent();
+    let text = ct.items.map(it => it.str).join(' ');
+
+    // OCR fallback for image-heavy pages
+    if (text.trim().length < 80) {
+      try {
+        const vp = pg.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width  = vp.width;
+        canvas.height = vp.height;
+        await pg.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        const { data: { text: ocrText } } = await tess.recognize(canvas);
+        if (ocrText.trim().length > text.trim().length) text = ocrText;
+      } catch(_) {}
+    }
+
+    results.push(text);
   }
+  return results;
 }
 
-async function extractText(file, useOCR) {
-  const { pages, numPages } = await extractPages(file);
-  const joined = pages.join(' ');
-  // If we got very little text and OCR is enabled, fall back to OCR
-  if (useOCR && joined.trim().length < 80) {
-    const ocrText = await ocrFile(file);
-    if (ocrText.length > joined.length) return { pages: [ocrText], numPages: 1, fromOCR: true };
+// ── Page classification ───────────────────────────────────────────────────────
+function classifyPages(pages) {
+  const groups = { handover:[], readapp:[], attest:[], id:[], reg:[], tech:[] };
+
+  // Rules ordered by specificity — first match wins
+  const rules = [
+    { id:'tech',     kw:['keuringsbewijs','contrôle technique','contr le technique','geldig tot','valable jusqu','inspection technique','technische controle','keuring geldig','aiv','goca'] },
+    { id:'reg',      kw:['inschrijvingsbewijs','certificat d immatriculation','certificat d\'immatriculation','bewijs van inschrijving','carte grise','deel i','deel ii','partie i','partie ii','voertuigregistratie'] },
+    { id:'id',       kw:['identiteitskaart','carte d identit','carte d\'identit','rijksregister','numéro national','nationaal nummer','procura','volmacht','procuration','gevolmachtigde','mandataire','paspoort','passport','eenmalige volmacht'] },
+    { id:'attest',   kw:['attest','attestation','btw attest','attestation tva','verklaring op eer','déclaration sur l honneur','déclaration sur l\'honneur','vrijstelling van btw','exonération de tva'] },
+    { id:'readapp',  kw:['gelezen en goedgekeurd','lu et approuvé','lu et approuve','read and approved','gelezen&goedgekeurd'] },
+    { id:'handover', kw:['koopovereenkomst','contrat de vente','verkoopcontract','purchase agreement','verkoper','vendeur','koper','acheteur','handover protocol'] },
+  ];
+
+  for (const page of pages) {
+    const t = page.toLowerCase().replace(/['''\u2019]/g,"'");
+    let best = null, bestScore = 0;
+    for (const rule of rules) {
+      const score = rule.kw.filter(k => t.includes(k)).length;
+      if (score > bestScore) { bestScore = score; best = rule.id; }
+    }
+    if (best && bestScore > 0) groups[best].push(page);
+    // Unclassified pages are silently skipped
   }
-  return { pages, numPages, fromOCR: false };
+
+  return groups;
 }
 
-async function extractMultipleFiles(files, useOCR) {
-  let allPages = [];
-  for (const f of files) {
-    const res = await extractText(f, useOCR);
-    allPages = allPages.concat(res.pages);
-  }
-  return allPages;
-}
-
-// ── Text helpers ─────────────────────────────────────────────────────────────
-const norm    = s => (s||'').toLowerCase().replace(/[\s\-\.,:;''""\u2019]/g,'');
-const normIBAN= s => (s||'').toUpperCase().replace(/[\s\-]/g,'');
+// ── Text helpers ──────────────────────────────────────────────────────────────
+const norm     = s => (s||'').toLowerCase().replace(/[\s\-\.,:;'''\u2019""\u201c\u201d]/g,'');
+const normIBAN = s => (s||'').toUpperCase().replace(/[\s\-]/g,'');
 
 function has(haystack, needle) {
   if (!needle||!haystack) return false;
@@ -273,8 +254,7 @@ function nameMatch(text, name) {
 }
 function vinMatch(text, vin) {
   if (!vin||!text) return false;
-  const v = vin.replace(/\s/g,'').toUpperCase();
-  return text.toUpperCase().replace(/\s/g,'').includes(v);
+  return text.toUpperCase().replace(/\s/g,'').includes(vin.replace(/\s/g,'').toUpperCase());
 }
 function plateMatch(text, plate) {
   if (!plate||!text) return false;
@@ -282,288 +262,214 @@ function plateMatch(text, plate) {
 }
 function ibanMatch(text, iban) {
   if (!iban||!text) return false;
-  const in_ = normIBAN(iban);
-  return text.toUpperCase().replace(/[\s\-]/g,'').includes(in_);
+  return text.toUpperCase().replace(/[\s\-]/g,'').includes(normIBAN(iban));
 }
-
 function detectLang(text) {
   const t = (text||'').toLowerCase();
-  const nl = ['koopovereenkomst','koper','verkoper','voertuig','kenteken','gelezen','goedgekeurd','deel','bewijs','rijksregister','inschrijvingsbewijs'].filter(w=>t.includes(w)).length;
-  const fr = ['contrat','acheteur','vendeur','véhicule','immatriculation','approuvé','partie','certificat','quittance','enregistrement'].filter(w=>t.includes(w)).length;
+  const nl = ['koopovereenkomst','koper','verkoper','gelezen','goedgekeurd','deel','rijksregister','inschrijvingsbewijs'].filter(w=>t.includes(w)).length;
+  const fr = ['contrat','acheteur','vendeur','approuvé','partie','certificat','immatriculation','enregistrement'].filter(w=>t.includes(w)).length;
   return nl>=fr ? 'NL' : 'FR';
 }
-
 function findDates(text) {
   const pat = /\b(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})\b/g;
-  const out = [];
-  let m;
+  const out = []; let m;
   while ((m=pat.exec(text))!==null) {
     const d = new Date(+m[3], +m[2]-1, +m[1]);
     if (!isNaN(d) && d.getFullYear()>=2000 && d.getFullYear()<=2050) out.push({date:d,raw:m[0]});
   }
   return out;
 }
-
-// ── Check result helper ───────────────────────────────────────────────────────
 const chk = (label,status,detail) => ({label,status,detail:detail||''});
-// status: 'pass' | 'warn' | 'fail' | 'info'
-
 const TODAY = new Date();
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// VERIFICATION FUNCTIONS
+// VERIFICATION FUNCTIONS  (all accept pages[] — already-extracted text)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ── Handover Protocol ─────────────────────────────────────────────────────────
-async function verifyHandover(file, name, vin, plate, useOCR) {
-  if (!file) return { skipped:true, checks:[chk('File','info','No file uploaded')] };
-  const { pages, fromOCR } = await extractText(file, useOCR);
-  if (!pages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read PDF')] };
+function verifyHandover(pages, name, vin, plate) {
+  if (!pages.length) return { skipped:true, checks:[chk('Section','info','No pages classified as Handover Protocol')] };
   const all = pages.join(' ');
   const checks = [];
-
-  if (fromOCR) checks.push(chk('Extraction method','info','Text extracted via OCR (scanned document)'));
-
+  checks.push(chk('Pages found','info',`${pages.length} page(s)`));
   const lang = detectLang(all);
-  checks.push(chk('Language','info', lang==='NL' ? 'Dutch (NL)' : 'French (FR)'));
+  checks.push(chk('Language','info', lang==='NL'?'Dutch (NL)':'French (FR)'));
 
-  const isDoc = hasAny(all,['koopovereenkomst','contrat de vente','handover','protocol','purchase agreement','verkoopcontract']);
-  checks.push(chk('Document type', isDoc?'pass':'warn', isDoc?'Handover Protocol / Koopovereenkomst identified':'Document type not clearly identified — verify manually'));
+  const isDoc = hasAny(all,['koopovereenkomst','contrat de vente','handover','verkoopcontract']);
+  checks.push(chk('Document type', isDoc?'pass':'warn', isDoc?'Handover Protocol identified':'Document type not clearly identified'));
 
-  checks.push(chk('Client name', nameMatch(all,name)?'pass':'fail', nameMatch(all,name)?`"${name}" found`:`"${name}" not found in document`));
-  checks.push(chk('VIN', vinMatch(all,vin)?'pass':'fail', vinMatch(all,vin)?`${vin} found`:`${vin} not found`));
-  checks.push(chk('License plate', plateMatch(all,plate)?'pass':'fail', plateMatch(all,plate)?`${plate} found`:`${plate} not found`));
+  checks.push(chk('Client name', nameMatch(all,name)?'pass':'fail', nameMatch(all,name)?`"${name}" found`:`"${name}" not found`));
+  checks.push(chk('VIN',         vinMatch(all,vin)   ?'pass':'fail', vinMatch(all,vin)   ?`${vin} found`       :`${vin} not found`));
+  checks.push(chk('License plate',plateMatch(all,plate)?'pass':'fail',plateMatch(all,plate)?`${plate} found`   :`${plate} not found`));
 
-  // Address: look for street types or Belgian postal code pattern
   const hasAddr = /\b\d{4}\s+[A-Za-z]/.test(all) ||
     hasAny(all.toLowerCase(),['straat','laan','weg','plein','avenue','rue ','boulevard','chemin','steenweg','dreef']);
-  checks.push(chk('Address', hasAddr?'pass':'warn', hasAddr?'Address / postal code detected':'No clear address found — manual check'));
+  checks.push(chk('Address', hasAddr?'pass':'warn', hasAddr?'Address/postal code detected':'No clear address — manual check'));
 
   const dates = findDates(all);
   checks.push(chk('Date(s) present', dates.length?'pass':'warn',
-    dates.length ? `Found: ${dates.slice(0,4).map(d=>d.raw).join(', ')}` : 'No dates detected'));
+    dates.length?`Found: ${dates.slice(0,4).map(d=>d.raw).join(', ')}`:'No dates detected'));
 
-  return { skipped:false, checks, lang };
+  return { skipped:false, checks };
 }
 
-// ── Read & Approved ───────────────────────────────────────────────────────────
-async function verifyReadApproved(file, name, useOCR) {
-  if (!file) return { skipped:true, checks:[chk('File','info','No file uploaded')] };
-  const { pages, fromOCR } = await extractText(file, useOCR);
-  if (!pages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read PDF')] };
+function verifyReadApproved(pages, name) {
+  if (!pages.length) return { skipped:true, checks:[chk('Section','info','No pages classified as Read & Approved')] };
   const all = pages.join(' ');
   const checks = [];
-  if (fromOCR) checks.push(chk('Extraction method','info','Text via OCR'));
+  checks.push(chk('Pages found','info',`${pages.length} page(s)`));
 
-  const hasNL = has(all,'gelezen en goedgekeurd') || has(all,'gelezengoedgekeurd') ||
-                has(all,'gelezen&goedgekeurd') || /gelezen\s*[&en]+\s*goedgekeurd/i.test(all);
-  const hasFR = has(all,'lu et approuvé') || has(all,'lu et approuve') ||
-                has(all,'luetapprouvé') || /lu\s*et\s*approuv/i.test(all);
+  const hasNL = has(all,'gelezen en goedgekeurd') || /gelezen\s*[&en]+\s*goedgekeurd/i.test(all);
+  const hasFR = has(all,'lu et approuvé') || has(all,'lu et approuve') || /lu\s*et\s*approuv/i.test(all);
 
   if (hasNL || hasFR) {
     checks.push(chk('Phrase found','pass', hasNL?'"Gelezen en goedgekeurd" (NL) present':'"Lu et approuvé" (FR) present'));
   } else {
     checks.push(chk('Phrase found','fail',
-      'Neither "gelezen en goedgekeurd" nor "lu et approuvé" found. ' +
-      'If handwritten only (not searchable), manual verification required.'));
+      'Neither "gelezen en goedgekeurd" nor "lu et approuvé" detected. If handwritten only, manual verification required.'));
   }
-
   checks.push(chk('Client name', nameMatch(all,name)?'pass':'warn',
     nameMatch(all,name)?`"${name}" found`:`"${name}" not found — manual check if handwritten`));
-
-  checks.push(chk('Signature','info','Visual signatures cannot be auto-verified — confirm handwritten signature is present'));
+  checks.push(chk('Signature','info','Visual signature cannot be auto-verified — confirm handwritten signature is present'));
 
   return { skipped:false, checks };
 }
 
-// ── Attestations ──────────────────────────────────────────────────────────────
-async function verifyAttestations(fileOrArr, name, vin, useOCR) {
-  const missing = !fileOrArr || (Array.isArray(fileOrArr) && !fileOrArr.length);
-  if (missing) return { skipped:true, checks:[chk('File','info','No file(s) uploaded')] };
-  const flist = Array.isArray(fileOrArr) ? fileOrArr : [fileOrArr];
-  const allPages = await extractMultipleFiles(flist, useOCR);
+function verifyAttestations(pages, name, vin) {
+  if (!pages.length) return { skipped:true, checks:[chk('Section','info','No pages classified as Attestations')] };
   const checks = [];
+  checks.push(chk('Pages found','info',`${pages.length} page(s)`));
+  if (pages.length < 3) checks.push(chk('Page count','warn',`Expected 3 attestation pages, got ${pages.length}`));
+  else checks.push(chk('Page count','pass',`${pages.length} page(s) — at least 3 found`));
 
-  if (!allPages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read attestation PDF(s)')] };
+  const p = [pages[0]||'', pages[1]||'', pages[2]||''];
 
-  checks.push(chk('Files / pages','info',`${flist.length} file(s), ${allPages.length} page(s) extracted`));
-
-  if (allPages.length < 3) {
-    checks.push(chk('Page count','warn',`Expected 3 attestation pages, got ${allPages.length} — ensure all 3 attestations are uploaded`));
-  } else {
-    checks.push(chk('Page count','pass',`${allPages.length} page(s) — at least 3 found`));
-  }
-
-  const p = [allPages[0]||'', allPages[1]||'', allPages[2]||''];
-
-  // Name on all pages
-  const nameOK = p.map((pg,i) => ({i:i+1,ok:nameMatch(pg,name)}));
+  const nameOK = p.map((pg,i)=>({i:i+1,ok:nameMatch(pg,name)}));
   const allName = nameOK.every(x=>x.ok);
   checks.push(chk('Client name on all pages', allName?'pass':'fail',
-    allName ? `"${name}" on all pages` :
-    `Missing on page(s): ${nameOK.filter(x=>!x.ok).map(x=>x.i).join(', ')}`));
+    allName?`"${name}" on all pages`:`Missing on page(s): ${nameOK.filter(x=>!x.ok).map(x=>x.i).join(', ')}`));
 
-  // VIN on all pages
-  const vinOK = p.map((pg,i) => ({i:i+1,ok:vinMatch(pg,vin)}));
+  const vinOK = p.map((pg,i)=>({i:i+1,ok:vinMatch(pg,vin)}));
   const allVIN = vinOK.every(x=>x.ok);
   checks.push(chk('VIN on all pages', allVIN?'pass':'fail',
-    allVIN ? `${vin} on all pages` :
-    `Missing on page(s): ${vinOK.filter(x=>!x.ok).map(x=>x.i).join(', ')}`));
+    allVIN?`${vin} on all pages`:`Missing on page(s): ${vinOK.filter(x=>!x.ok).map(x=>x.i).join(', ')}`));
 
-  // Dates on all pages
-  const datesPerPage = p.map(pg => findDates(pg));
-  const allDates = datesPerPage.every(d=>d.length>0);
+  const dpp = p.map(pg=>findDates(pg));
+  const allDates = dpp.every(d=>d.length>0);
   checks.push(chk('Dates on all pages', allDates?'pass':'warn',
-    `P1: ${datesPerPage[0].map(d=>d.raw).join(',')||'none'} | P2: ${datesPerPage[1].map(d=>d.raw).join(',')||'none'} | P3: ${datesPerPage[2].map(d=>d.raw).join(',')||'none'}`));
+    `P1: ${dpp[0].map(d=>d.raw).join(',')||'none'} | P2: ${dpp[1].map(d=>d.raw).join(',')||'none'} | P3: ${dpp[2].map(d=>d.raw).join(',')||'none'}`));
 
-  // Dates consistent across pages
   if (allDates) {
-    const d1 = datesPerPage[0][0]?.raw, d2 = datesPerPage[1][0]?.raw, d3 = datesPerPage[2][0]?.raw;
-    const consistent = d1===d2 && d2===d3;
-    checks.push(chk('Dates consistent','pass', consistent ? `Same date across pages (${d1})` : `Dates differ: ${d1} | ${d2} | ${d3} — verify manually`));
+    const d1=dpp[0][0]?.raw, d2=dpp[1][0]?.raw, d3=dpp[2][0]?.raw;
+    checks.push(chk('Dates consistent', d1===d2&&d2===d3?'pass':'warn',
+      d1===d2&&d2===d3?`Same date across pages (${d1})`:`Dates differ: ${d1} | ${d2} | ${d3}`));
   }
 
-  // Price check
-  const priceRe = /[€$£]\s*\d|\d\s*[€$]|\b(EUR|euro|prix|prijs|bedrag|montant|price)\b|\d{3,}[,\.]\d{2}\s*(EUR|€)?/i;
-  const hasP = p.map(pg => priceRe.test(pg));
-  checks.push(chk('Price on page 1', hasP[0]?'pass':'warn', hasP[0]?'Amount/price detected':'No price detected (check manually)'));
-  if (allPages.length>=2) checks.push(chk('Price on page 2', hasP[1]?'pass':'warn', hasP[1]?'Amount/price detected':'No price detected'));
-  if (allPages.length>=3) checks.push(chk('No price on page 3', !hasP[2]?'pass':'fail',
+  const priceRe = /[€$£]\s*\d|\d\s*[€$]|\b(EUR|euro|prix|prijs|bedrag|montant)\b|\d{3,}[,\.]\d{2}/i;
+  const hasP = p.map(pg=>priceRe.test(pg));
+  checks.push(chk('Price on page 1', hasP[0]?'pass':'warn', hasP[0]?'Amount detected':'No price detected (check manually)'));
+  if (pages.length>=2) checks.push(chk('Price on page 2', hasP[1]?'pass':'warn', hasP[1]?'Amount detected':'No price detected'));
+  if (pages.length>=3) checks.push(chk('No price on page 3', !hasP[2]?'pass':'fail',
     !hasP[2]?'Correct — no price on page 3':'Price/amount found on page 3 — should not be present'));
 
-  checks.push(chk('Signatures (2 per page)','info','Visual check required — confirm 2 signature boxes are signed on each attestation page'));
-
+  checks.push(chk('Signatures (2 per page)','info','Visual check required — confirm 2 signature boxes are signed on each page'));
   return { skipped:false, checks };
 }
 
-// ── ID / Procura ──────────────────────────────────────────────────────────────
-async function verifyIDProcura(file, name, vin, iban, useOCR) {
-  if (!file) return { skipped:true, checks:[chk('File','info','No file uploaded')] };
-  const { pages, fromOCR } = await extractText(file, useOCR);
-  if (!pages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read PDF')] };
+function verifyIDProcura(pages, name, vin, iban) {
+  if (!pages.length) return { skipped:true, checks:[chk('Section','info','No pages classified as ID / Procura')] };
   const all = pages.join(' ');
   const checks = [];
-  if (fromOCR) checks.push(chk('Extraction method','info','Text via OCR'));
+  checks.push(chk('Pages found','info',`${pages.length} page(s)`));
 
-  checks.push(chk('Pages','info',`${pages.length} page(s)`));
-
-  // Procura detection
-  const hasProcura = hasAny(all.toLowerCase(),['procura','volmacht','procuration','mandataire','gemachtigde','mandaat','power of attorney','volmacht geeft','gevolmachtigde']);
-  checks.push(chk('Document type','info', hasProcura ? 'Procura (Power of Attorney) detected' : 'Standard ID (no Procura detected)'));
+  const hasProcura = hasAny(all.toLowerCase(),['procura','volmacht','procuration','mandataire','gemachtigde','mandaat','power of attorney','gevolmachtigde']);
+  checks.push(chk('Document type','info', hasProcura?'Procura (Power of Attorney) detected':'Standard ID (no Procura detected)'));
 
   if (hasProcura) {
-    // Two ID cards expected
-    const idRefs = (all.match(/\b(identiteitskaart|carte\s*d['']identit|rijksregister|numéro\s*national|nationaal\s*nr|eId|ID\s*card|paspoort|passport|kaart\s*nr|nr\.\s*\d)/gi)||[]).length;
+    const idRefs = (all.match(/\b(identiteitskaart|carte d['']identit|rijksregister|numéro national|nationaal\s*nr|eId|ID\s*card|paspoort|passport|kaart\s*nr)/gi)||[]).length;
     checks.push(chk('2 ID cards (Procura)', idRefs>=2?'pass':'warn',
-      idRefs>=2 ? `${idRefs} ID reference(s) found — OK` :
-      `Only ${idRefs} ID reference(s) detected — 2 required. Manual check if IDs are image-only.`));
-
+      idRefs>=2?`${idRefs} ID reference(s) found`:`Only ${idRefs} ID reference(s) found — 2 required. Manual check if IDs are image-only.`));
     checks.push(chk('VIN in Procura', vinMatch(all,vin)?'pass':'fail',
-      vinMatch(all,vin)?`${vin} found in Procura`:`${vin} not found — must appear in power of attorney`));
-
-    checks.push(chk('Proxy signature consistency','info','Visual check: confirm proxy signature in Procura matches signature on attestations and Handover Protocol'));
+      vinMatch(all,vin)?`${vin} found`:`${vin} not found — must appear in power of attorney`));
+    checks.push(chk('Proxy signature consistency','info','Visual check: confirm proxy signature matches across attestations and Handover Protocol'));
   }
 
-  // Name in ID
-  checks.push(chk('Client name in ID', nameMatch(all,name)?'pass':'fail',
-    nameMatch(all,name)?`"${name}" found`:`"${name}" not found. Manual check required if ID is image-based.`));
-
-  // IBAN
+  checks.push(chk('Client name', nameMatch(all,name)?'pass':'fail',
+    nameMatch(all,name)?`"${name}" found`:`"${name}" not found — manual check if ID is image-based`));
   checks.push(chk('IBAN match', ibanMatch(all,iban)?'pass':'fail',
-    ibanMatch(all,iban) ?
-      `IBAN ${iban} found` :
-      `IBAN ${iban} not found. Note: the bank card holder's name does NOT need to match — only the IBAN number matters.`));
-
-  checks.push(chk('Signature with rest of contract','info','Visual check: confirm one signature on Handover Protocol matches signatures on attestations'));
+    ibanMatch(all,iban)?`IBAN ${iban} found`:
+    `IBAN ${iban} not found. Note: bank card holder name is irrelevant — only the IBAN number must match.`));
+  checks.push(chk('Signature consistency','info','Visual check: confirm one signature on Handover Protocol matches attestations'));
 
   return { skipped:false, checks };
 }
 
-// ── Registration Certificate ──────────────────────────────────────────────────
-async function verifyRegistration(file, name, vin, plate, useOCR) {
-  if (!file) return { skipped:true, checks:[chk('File','info','No file uploaded')] };
-  const { pages, fromOCR } = await extractText(file, useOCR);
-  if (!pages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read PDF')] };
+function verifyRegistration(pages, name, vin, plate) {
+  if (!pages.length) return { skipped:true, checks:[chk('Section','info','No pages classified as Registration Certificate')] };
   const all = pages.join(' ');
   const checks = [];
-  if (fromOCR) checks.push(chk('Extraction method','info','Text via OCR'));
-
   const lang = detectLang(all);
-  checks.push(chk('Language','info', lang==='NL' ? 'Dutch (NL)' : 'French (FR)'));
-  checks.push(chk('Pages','info',`${pages.length} page(s)`));
+  checks.push(chk('Pages found','info',`${pages.length} page(s)`));
+  checks.push(chk('Language','info', lang==='NL'?'Dutch (NL)':'French (FR)'));
 
-  // Both parts detection
-  const has1 = hasAny(all,['deel i','deel 1','partie i','partie 1','part i','inschrijvingsbewijs','certificat d\'immatriculation','bewijs van inschrijving']);
-  const has2 = hasAny(all,['deel ii','deel 2','partie ii','partie 2','part ii']);
+  const has1 = hasAny(all,['deel i','deel 1','partie i','partie 1','inschrijvingsbewijs','certificat d\'immatriculation','bewijs van inschrijving']);
+  const has2 = hasAny(all,['deel ii','deel 2','partie ii','partie 2']);
 
-  if (pages.length >= 2) {
-    checks.push(chk('Both parts present','pass',
-      `${pages.length} pages found — ${lang==='NL'?'Deel I + Deel II':'Partie I + Partie II'} assumed present`));
-  } else if (has1 && has2) {
-    checks.push(chk('Both parts present','pass','Part I and Part II both identified in document'));
-  } else if (has1 || has2) {
-    checks.push(chk('Both parts present','warn',
-      `Only ${has1?'Part I':'Part II'} clearly identified — ensure both parts are included`));
+  if (pages.length>=2) {
+    checks.push(chk('Both parts present','pass',`${pages.length} pages — ${lang==='NL'?'Deel I + Deel II':'Partie I + II'} assumed`));
+  } else if (has1&&has2) {
+    checks.push(chk('Both parts present','pass','Part I and Part II both identified'));
+  } else if (has1||has2) {
+    checks.push(chk('Both parts present','warn',`Only ${has1?'Part I':'Part II'} identified — ensure both parts are in the PDF`));
   } else {
-    checks.push(chk('Both parts present','warn','Could not clearly identify Part I / Part II — verify manually'));
+    checks.push(chk('Both parts present','warn','Could not identify Part I / Part II — verify manually'));
   }
 
-  checks.push(chk('Client name', nameMatch(all,name)?'pass':'fail', nameMatch(all,name)?`"${name}" found`:`"${name}" not found`));
-  checks.push(chk('VIN', vinMatch(all,vin)?'pass':'fail', vinMatch(all,vin)?`${vin} found`:`${vin} not found`));
-  checks.push(chk('License plate', plateMatch(all,plate)?'pass':'fail', plateMatch(all,plate)?`${plate} found`:`${plate} not found`));
+  checks.push(chk('Client name',  nameMatch(all,name) ?'pass':'fail', nameMatch(all,name) ?`"${name}" found`:`"${name}" not found`));
+  checks.push(chk('VIN',          vinMatch(all,vin)   ?'pass':'fail', vinMatch(all,vin)   ?`${vin} found`   :`${vin} not found`));
+  checks.push(chk('License plate',plateMatch(all,plate)?'pass':'fail',plateMatch(all,plate)?`${plate} found`:`${plate} not found`));
 
   return { skipped:false, checks };
 }
 
-// ── Technical Control ─────────────────────────────────────────────────────────
-async function verifyTechControl(file, vin, plate, useOCR) {
-  if (!file) return { skipped:true, checks:[chk('File','info','No file uploaded')] };
-  const { pages, fromOCR } = await extractText(file, useOCR);
-  if (!pages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read PDF')] };
+function verifyTechControl(pages, vin, plate) {
+  if (!pages.length) return { skipped:true, checks:[chk('Section','info','No pages classified as Technical Control')] };
   const all = pages.join(' ');
   const checks = [];
-  if (fromOCR) checks.push(chk('Extraction method','info','Text via OCR'));
+  checks.push(chk('Pages found','info',`${pages.length} page(s)`));
 
-  checks.push(chk('VIN', vinMatch(all,vin)?'pass':'fail', vinMatch(all,vin)?`${vin} found`:`${vin} not found`));
-  checks.push(chk('License plate', plateMatch(all,plate)?'pass':'fail', plateMatch(all,plate)?`${plate} found`:`${plate} not found`));
+  checks.push(chk('VIN',          vinMatch(all,vin)   ?'pass':'fail', vinMatch(all,vin)   ?`${vin} found`   :`${vin} not found`));
+  checks.push(chk('License plate',plateMatch(all,plate)?'pass':'fail',plateMatch(all,plate)?`${plate} found`:`${plate} not found`));
 
-  // Find expiry date
+  // Expiry date detection
   let expiryDate = null;
-  const expiryKeyRe = /geldig\s*tot|valable\s*jusqu|vervaldatum|date\s*(?:d['']expiration|limite)|geldig\s*t\/m|expir|keuring\s*geldig/i;
-
-  // Split into pseudo-lines and find expiry-related context
-  const sentences = all.split(/[\n\r]|(?<=[?!.])\s/).map(s=>s.trim()).filter(Boolean);
+  const expiryRe = /geldig\s*tot|valable\s*jusqu|vervaldatum|date\s*(?:d['']expiration|limite)|expir|keuring\s*geldig/i;
+  const sentences = all.split(/[\n\r]/).map(s=>s.trim()).filter(Boolean);
   for (const sen of sentences) {
-    if (expiryKeyRe.test(sen)) {
+    if (expiryRe.test(sen)) {
       const ds = findDates(sen);
       if (ds.length) { expiryDate = ds[ds.length-1].date; break; }
     }
   }
-
-  // Fallback: latest plausible date in document
   if (!expiryDate) {
-    const allDates = findDates(all).filter(d => d.date.getFullYear()>=2023 && d.date.getFullYear()<=2035);
-    if (allDates.length) {
-      allDates.sort((a,b)=>b.date-a.date);
-      expiryDate = allDates[0].date;
-    }
+    const all_ = findDates(all).filter(d=>d.date.getFullYear()>=2023&&d.date.getFullYear()<=2035);
+    if (all_.length) { all_.sort((a,b)=>b.date-a.date); expiryDate = all_[0].date; }
   }
 
   if (!expiryDate) {
     checks.push(chk('Expiry date','warn','Could not auto-detect expiry date — manual check required'));
   } else {
-    const diffMs = expiryDate.getTime() - TODAY.getTime();
-    const diffDays = Math.round(diffMs / 86400000);
+    const diffMs  = expiryDate.getTime() - TODAY.getTime();
+    const diffDays = Math.round(diffMs/86400000);
     const fmt = expiryDate.toLocaleDateString('en-GB');
     if (diffMs > 0) {
       checks.push(chk('Expiry date','pass',`Valid until ${fmt} (${diffDays} days remaining)`));
     } else {
-      const expDays = Math.abs(diffDays);
-      const expYears = expDays / 365;
+      const expDays  = Math.abs(diffDays);
+      const expYears = expDays/365;
       if (expYears < 1) {
         checks.push(chk('Expiry date','warn',`Expired ${fmt} (${expDays} days ago — less than 1 year: flagged but OK)`));
       } else {
-        checks.push(chk('Expiry date','fail',`Expired ${fmt} (${(expYears).toFixed(1)} years ago — more than 1 year: NOT OK)`));
+        checks.push(chk('Expiry date','fail',`Expired ${fmt} (${expYears.toFixed(1)} years ago — more than 1 year: NOT OK)`));
       }
     }
   }
@@ -578,11 +484,8 @@ async function verifyTechControl(file, vin, plate, useOCR) {
 // RENDER RESULTS
 // ═══════════════════════════════════════════════════════════════════════════════
 const STATUS_ICON = { pass:'✅', warn:'⚠️', fail:'🚩', info:'ℹ️' };
-const DOC_LABELS = {
-  handover:'Handover Protocol', readapp:'Read & Approved', attest:'Attestations',
-  id:'ID / Procura', reg:'Registration Certificate', tech:'Technical Control'
-};
-const DOC_ICONS = { handover:'📋', readapp:'✍️', attest:'📑', id:'🪪', reg:'📘', tech:'🔧' };
+const DOC_LABELS  = { handover:'Handover Protocol', readapp:'Read & Approved', attest:'Attestations', id:'ID / Procura', reg:'Registration Certificate', tech:'Technical Control' };
+const DOC_ICONS   = { handover:'📋', readapp:'✍️', attest:'📑', id:'🪪', reg:'📘', tech:'🔧' };
 
 function sectionStatus(result) {
   if (result.skipped) return 'skip';
@@ -592,14 +495,13 @@ function sectionStatus(result) {
   return 'pass';
 }
 
-function renderResults(results) {
+function renderResults(results, pageGroups) {
   const container = document.getElementById('results-content');
   container.innerHTML = '';
 
-  // Overall banner
   const allChecks = Object.values(results).flatMap(r=>r.checks||[]);
-  const fails = allChecks.filter(c=>c.status==='fail').length;
-  const warns = allChecks.filter(c=>c.status==='warn').length;
+  const fails  = allChecks.filter(c=>c.status==='fail').length;
+  const warns  = allChecks.filter(c=>c.status==='warn').length;
   const passes = allChecks.filter(c=>c.status==='pass').length;
   const overall = fails>0?'fail':warns>0?'warn':'pass';
 
@@ -611,28 +513,26 @@ function renderResults(results) {
   `;
   container.appendChild(banner);
 
-  // Per-document sections
   for (const [id, result] of Object.entries(results)) {
     const st = sectionStatus(result);
     const stIcon = {pass:'✅',warn:'⚠️',fail:'🚩',skip:'—'}[st];
     const hdrClass = {pass:'dh-pass',warn:'dh-warn',fail:'dh-fail',skip:'dh-skip'}[st];
+    const pgCount = (pageGroups&&pageGroups[id]) ? pageGroups[id].length : 0;
+    const bodyId = 'body-' + id;
 
     const section = document.createElement('div');
     section.className = 'doc-result';
-
-    const checks = result.checks||[];
-    const bodyId = 'body-' + id;
-
     section.innerHTML = `
       <div class="doc-result-header ${hdrClass}" onclick="toggleSection('${bodyId}')">
         <span>${DOC_ICONS[id]||'📄'}</span>
         <span>${stIcon} ${DOC_LABELS[id]||id}</span>
-        ${result.skipped ? '<span style="font-weight:400;opacity:.5;font-size:11px;margin-left:auto">Not uploaded</span>' : ''}
+        ${pgCount ? `<span class="page-badge">${pgCount}p</span>` : ''}
+        ${result.skipped ? '<span style="font-weight:400;opacity:.5;font-size:11px;margin-left:auto">Not found in PDF</span>' : ''}
         <span style="margin-left:auto;opacity:.4;font-size:11px">▾</span>
       </div>
       <div class="doc-result-body" id="${bodyId}">
         <ul class="checks">
-          ${checks.map(c=>`
+          ${(result.checks||[]).map(c=>`
             <li>
               <span class="ci">${STATUS_ICON[c.status]||'•'}</span>
               <span class="cl"><strong>${escHtml(c.label)}:</strong> ${escHtml(c.detail)}</span>
@@ -649,7 +549,6 @@ function toggleSection(id) {
   const el = document.getElementById(id);
   if (el) el.style.display = el.style.display==='none' ? '' : 'none';
 }
-
 function escHtml(s) {
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -662,40 +561,57 @@ async function runVerification() {
   const vin   = document.getElementById('vin').value.trim().toUpperCase().replace(/\s/g,'');
   const plate = document.getElementById('plate').value.trim().toUpperCase();
   const iban  = document.getElementById('iban').value.trim();
-  const useOCR = document.getElementById('ocr-toggle').checked;
 
   if (!name||!vin||!plate||!iban) {
     alert('Please fill in all four agent fields: Client Name, VIN, License Plate, and IBAN.');
     return;
   }
+  if (!uploadedFile) {
+    alert('Please upload the contract PDF first.');
+    return;
+  }
 
   const btn = document.getElementById('verify-btn');
+  const prog = document.getElementById('progress');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Verifying…';
 
-  const results = {};
+  let pages = [], pageGroups = {};
   try {
-    results.handover = await verifyHandover(uploadedFiles.handover, name, vin, plate, useOCR);
-    results.readapp  = await verifyReadApproved(uploadedFiles.readapp, name, useOCR);
-    results.attest   = await verifyAttestations(uploadedFiles.attest, name, vin, useOCR);
-    results.id       = await verifyIDProcura(uploadedFiles.id, name, vin, iban, useOCR);
-    results.reg      = await verifyRegistration(uploadedFiles.reg, name, vin, plate, useOCR);
-    results.tech     = await verifyTechControl(uploadedFiles.tech, vin, plate, useOCR);
+    prog.textContent = 'Loading Tesseract OCR…';
+    pages = await extractAllPages(uploadedFile, (i, n) => {
+      prog.textContent = `Extracting page ${i} / ${n}…`;
+    });
+    prog.textContent = `Classifying ${pages.length} page(s)…`;
+    pageGroups = classifyPages(pages);
+
+    const classified = Object.values(pageGroups).reduce((s,a)=>s+a.length,0);
+    prog.textContent = `${classified} / ${pages.length} page(s) classified — running checks…`;
+
+    const results = {
+      handover: verifyHandover(pageGroups.handover, name, vin, plate),
+      readapp:  verifyReadApproved(pageGroups.readapp, name),
+      attest:   verifyAttestations(pageGroups.attest, name, vin),
+      id:       verifyIDProcura(pageGroups.id, name, vin, iban),
+      reg:      verifyRegistration(pageGroups.reg, name, vin, plate),
+      tech:     verifyTechControl(pageGroups.tech, vin, plate),
+    };
+
+    prog.textContent = '';
+    document.getElementById('results').style.display = '';
+    renderResults(results, pageGroups);
+    document.getElementById('results').scrollIntoView({ behavior:'smooth' });
+
   } catch(err) {
+    prog.textContent = '';
     alert('Verification error: ' + err.message);
     console.error(err);
   } finally {
     btn.disabled = false;
     btn.innerHTML = '▶ Run Verification';
   }
-
-  document.getElementById('results').style.display = '';
-  renderResults(results);
-  document.getElementById('results').scrollIntoView({ behavior:'smooth' });
 }
 
-// Init
-renderZones();
 document.getElementById('verify-btn').addEventListener('click', runVerification);
 </script>
 </body>
