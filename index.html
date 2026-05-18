@@ -1,915 +1,702 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WKA Document Checker</title>
-  <script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-  <script src="https://unpkg.com/tesseract.js@5/dist/tesseract.min.js"></script>
-  <style>
-    :root {
-      --primary: #1a56db;
-      --ok-bg:#d1fae5; --ok-fg:#065f46;
-      --err-bg:#fee2e2; --err-fg:#991b1b;
-      --wn-bg:#fef3c7;  --wn-fg:#92400e;
-      --gr-bg:#f3f4f6;  --gr-fg:#6b7280;
-      --border:#e5e7eb;
-    }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;background:#f9fafb}
-    .wrap{max-width:1000px;margin:0 auto;padding:28px 20px}
-    header h1{font-size:21px;font-weight:700}
-    header p{color:var(--gr-fg);margin-top:3px;font-size:13px}
-    header{margin-bottom:20px}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Belgian Car Sale Contract Verifier</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;padding:24px 20px;max-width:1100px;margin:0 auto;line-height:1.5}
+h1{font-size:21px;font-weight:700;margin-bottom:4px}
+.subtitle{font-size:12px;opacity:.5;margin-bottom:28px}
+section{margin-bottom:28px}
+.section-title{font-size:13px;font-weight:600;opacity:.6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.card{border:1px solid rgba(128,128,128,.18);border-radius:10px;padding:18px}
 
-    /* Drop zone */
-    .drop{border:2px dashed var(--border);border-radius:10px;padding:32px;text-align:center;cursor:pointer;background:#fff;transition:.15s;margin-bottom:14px}
-    .drop:hover,.drop.over{border-color:var(--primary);background:#eff6ff}
-    .drop input{display:none}
-    .drop .ico{font-size:32px;margin-bottom:8px}
-    .drop .hint{color:var(--gr-fg);font-size:13px;line-height:1.6}
-    .drop .hint b{color:var(--primary)}
-    .pill{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;background:#eff6ff;border-radius:20px;font-size:12px;color:var(--primary);margin-bottom:14px}
+/* Agent inputs */
+.input-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.input-group label{display:block;font-size:11px;font-weight:600;opacity:.55;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.input-group input{width:100%;padding:9px 11px;border:1px solid rgba(128,128,128,.25);border-radius:7px;font-size:14px;font-family:inherit;background:transparent;color:inherit}
+.input-group input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
 
-    /* Cards */
-    .card{background:#fff;border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden}
-    .card-hd{padding:11px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px}
-    .card-bd{padding:16px}
+/* Upload zones */
+.doc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:10px}
+.upload-zone{border:2px dashed rgba(128,128,128,.25);border-radius:9px;padding:15px 14px;text-align:center;position:relative;cursor:pointer;transition:border-color .15s,background .15s;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.upload-zone:hover{border-color:#3b82f6;background:rgba(59,130,246,.04)}
+.upload-zone.has-file{border-style:solid;border-color:#22c55e;background:rgba(34,197,94,.04)}
+.upload-zone.drag-over{border-color:#3b82f6;background:rgba(59,130,246,.07)}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.uz-icon{font-size:22px;line-height:1}
+.uz-name{font-weight:600;font-size:13px}
+.uz-desc{font-size:11px;opacity:.45}
+.uz-fname{font-size:11px;color:#16a34a;font-weight:500;margin-top:2px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uz-multi-hint{font-size:10px;opacity:.45;margin-top:2px}
 
-    /* Form */
-    .g2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-    .fg{display:flex;flex-direction:column;gap:4px}
-    .fg.full{grid-column:1/-1}
-    .fg label{font-size:10px;font-weight:700;color:var(--gr-fg);text-transform:uppercase;letter-spacing:.07em}
-    .fg input,.fg select{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:#f9fafb;color:#111}
-    .fg input:focus,.fg select:focus{outline:none;border-color:var(--primary);background:#fff}
+/* Run button */
+#verify-btn{width:100%;padding:13px;background:#1d4ed8;color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:28px;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+#verify-btn:hover{background:#1e40af}
+#verify-btn:disabled{background:#94a3b8;cursor:not-allowed}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-    /* Btn */
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 20px;background:var(--primary);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:12px}
-    .btn:hover{background:#1e40af}
-    .btn:disabled{opacity:.4;cursor:not-allowed}
+/* Results */
+.overall-banner{padding:12px 16px;border-radius:8px;font-weight:700;font-size:14px;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.overall-banner.pass{background:rgba(34,197,94,.12);color:#15803d;border:1px solid rgba(34,197,94,.3)}
+.overall-banner.warn{background:rgba(234,179,8,.1);color:#92400e;border:1px solid rgba(234,179,8,.3)}
+.overall-banner.fail{background:rgba(239,68,68,.1);color:#991b1b;border:1px solid rgba(239,68,68,.3)}
+.banner-counts{font-size:12px;font-weight:400;opacity:.75;margin-left:auto}
 
-    /* Summary */
-    .sum-row{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:14px}
-    .sum-box{border-radius:10px;padding:15px;text-align:center;border:1px solid var(--border)}
-    .sum-box .n{font-size:28px;font-weight:800}
-    .sum-box .l{font-size:11px;color:var(--gr-fg);margin-top:2px}
-    .s-ok{background:var(--ok-bg);border-color:#6ee7b7}.s-ok .n{color:var(--ok-fg)}
-    .s-err{background:var(--err-bg);border-color:#fca5a5}.s-err .n{color:var(--err-fg)}
-    .s-neu{background:#f9fafb}.s-neu .n{color:#374151}
+.doc-result{margin-bottom:12px;border:1px solid rgba(128,128,128,.15);border-radius:9px;overflow:hidden}
+.doc-result-header{padding:10px 14px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:13px;cursor:pointer;user-select:none}
+.doc-result-header:hover{filter:brightness(.97)}
+.doc-result-body{padding:10px 14px;border-top:1px solid rgba(128,128,128,.12)}
+.checks{list-style:none;display:flex;flex-direction:column;gap:5px}
+.checks li{font-size:12.5px;display:flex;gap:8px;align-items:flex-start}
+.ci{flex-shrink:0;width:16px;text-align:center;line-height:1.5}
+.cl{flex:1}
+.cl strong{font-weight:600}
 
-    /* Vehicle boxes */
-    .vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .vbox{background:#f9fafb;border-radius:7px;padding:11px 13px}
-    .vbox .l{font-size:10px;font-weight:700;color:var(--gr-fg);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-    .vbox .v{font-size:14px;font-weight:700;word-break:break-all}
+/* Status colors for doc headers */
+.dh-pass{background:rgba(34,197,94,.08)}
+.dh-warn{background:rgba(234,179,8,.1)}
+.dh-fail{background:rgba(239,68,68,.09)}
+.dh-skip{background:rgba(128,128,128,.07)}
 
-    /* Category banner */
-    .cat{border-radius:7px;padding:10px 13px;font-weight:600;font-size:12px;margin-bottom:13px}
-    .c-ok{background:var(--ok-bg);color:var(--ok-fg)}
-    .c-wn{background:var(--wn-bg);color:var(--wn-fg)}
-    .c-un{background:var(--gr-bg);color:var(--gr-fg)}
+/* OCR toggle */
+.ocr-row{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;opacity:.7}
+.ocr-row input[type=checkbox]{width:14px;height:14px;cursor:pointer}
 
-    /* Tables */
-    table{width:100%;border-collapse:collapse}
-    th{padding:7px 11px;text-align:left;font-size:10px;font-weight:700;color:var(--gr-fg);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
-    td{padding:9px 11px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
-    tr:last-child td{border-bottom:none}
-    .mono{font-family:monospace;font-size:11px;word-break:break-all}
-    td .sub{font-size:10px;color:var(--gr-fg);margin-top:2px}
+/* Summary table */
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:16px}
+.summary-card{padding:10px 14px;border-radius:7px;font-size:12px}
+.summary-card .sc-label{opacity:.6;margin-bottom:2px}
+.summary-card .sc-val{font-size:18px;font-weight:700}
 
-    /* Badges */
-    .b{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}
-    .b-ok{background:var(--ok-bg);color:var(--ok-fg)}
-    .b-err{background:var(--err-bg);color:var(--err-fg)}
-    .b-wn{background:var(--wn-bg);color:var(--wn-fg)}
-    .b-gr{background:var(--gr-bg);color:var(--gr-fg)}
+/* Print */
+@media print{#verify-btn,#doc-grid,#agent-section,.ocr-row{display:none}body{padding:0}section{margin-bottom:16px}}
 
-    /* Section label */
-    .sec-label{font-size:11px;font-weight:700;color:var(--gr-fg);text-transform:uppercase;letter-spacing:.06em;padding:6px 11px;background:#f9fafb;border-bottom:1px solid var(--border)}
-
-    /* Note */
-    .note{font-size:11px;color:var(--gr-fg);margin-top:11px;line-height:1.6;padding:10px;background:#f9fafb;border-radius:6px}
-
-    /* Debug */
-    details{margin-top:14px}
-    summary{cursor:pointer;font-size:12px;color:var(--gr-fg)}
-    textarea.dbg{width:100%;height:150px;font-family:monospace;font-size:11px;border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:8px;resize:vertical;background:#f9fafb}
-
-    /* Spinner */
-    .spin{display:inline-block;width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
-    @keyframes sp{to{transform:rotate(360deg)}}
-
-    /* Progress */
-    .progress-wrap{margin-bottom:14px;display:none}
-    .progress-label{font-size:12px;color:var(--gr-fg);margin-bottom:5px}
-    .progress-bar{height:7px;background:var(--border);border-radius:4px;overflow:hidden}
-    .progress-fill{height:100%;background:var(--primary);border-radius:4px;transition:width .3s;width:0%}
-    .ocr-badge{display:inline-block;padding:2px 8px;background:#eff6ff;color:var(--primary);border-radius:10px;font-size:11px;font-weight:700;margin-left:8px}
-
-    #results{display:none}
-  </style>
+/* Dark mode tweaks */
+@media(prefers-color-scheme:dark){
+  .input-group input{border-color:rgba(255,255,255,.2)}
+  .doc-result{border-color:rgba(255,255,255,.1)}
+  .doc-result-body{border-top-color:rgba(255,255,255,.1)}
+  .overall-banner.pass{background:rgba(34,197,94,.15);color:#4ade80}
+  .overall-banner.warn{background:rgba(234,179,8,.15);color:#fbbf24}
+  .overall-banner.fail{background:rgba(239,68,68,.15);color:#f87171}
+  .dh-pass{background:rgba(34,197,94,.12)}
+  .dh-warn{background:rgba(234,179,8,.15)}
+  .dh-fail{background:rgba(239,68,68,.12)}
+}
+</style>
 </head>
 <body>
-<div class="wrap">
 
-  <header>
-    <h1>📋 WKA Document Checker</h1>
-    <p>Vérification automatique des documents selon la Liste des documents WKA</p>
-  </header>
+<header>
+  <h1>🚗 Belgian Car Sale Contract Verifier</h1>
+  <p class="subtitle">Enter client details manually, upload documents, then run automated verification</p>
+</header>
 
-  <!-- Upload -->
-  <div class="drop" id="dz">
-    <input type="file" id="fi" accept=".pdf">
-    <div class="ico">📄</div>
-    <div class="hint"><b>Cliquez pour sélectionner</b> ou glissez le dossier PDF client ici</div>
-  </div>
-  <div class="pill" id="pill" style="display:none">📎 <span id="fname"></span><span class="ocr-badge" id="ocrBadge" style="display:none">OCR</span></div>
-
-  <!-- Progress bar (shown during OCR) -->
-  <div class="progress-wrap" id="progressWrap">
-    <div class="progress-label" id="progressLabel">Initialisation…</div>
-    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-  </div>
-
-  <!-- Config form -->
+<!-- Agent Inputs -->
+<section id="agent-section">
+  <div class="section-title">Agent Input — Client Details</div>
   <div class="card">
-    <div class="card-hd">⚙️ Configuration du dossier</div>
-    <div class="card-bd">
-      <div class="g2">
-        <!-- Deal type -->
-        <div class="fg full">
-          <label>Type de dossier</label>
-          <select id="dealType">
-            <option value="auto">🔍 Détecter automatiquement depuis le PDF</option>
-            <optgroup label="── MARGE ──">
-              <option value="marge_ord">Marge ordinaire (&gt; 5 ans et &lt; 15k)</option>
-              <option value="marge_extra">Marge 15k et/ou &lt; 5 ans</option>
-              <option value="marge_fin_plus">Marge en financement + 5 ans et/ou + 15k</option>
-              <option value="marge_fin_moins">Marge en financement &lt; 5 ans et &lt; 15k</option>
-              <option value="marge_deces">Marge avec décès</option>
-              <option value="marge_facture">Marge avec facture de sortie / intermédiaire</option>
-            </optgroup>
-            <optgroup label="── VAT ──">
-              <option value="vat_plus5_moins15">VAT &gt; 5 ans &lt; 15k</option>
-              <option value="vat_art44">VAT ART 44 (0%)</option>
-              <option value="vat_extra">VAT +15k ou &lt; 5 ans</option>
-              <option value="vat_fin">VAT + Financement</option>
-              <option value="vat_lease_non">VAT + Lease non pris en charge</option>
-              <option value="vat_lease_oui">VAT + Lease pris en charge</option>
-            </optgroup>
-            <optgroup label="── AUTRES ──">
-              <option value="diplomate">Diplomate / SHAPE</option>
-              <option value="lux_marge">Luxembourg – Marge</option>
-              <option value="lux_vat">Luxembourg – VAT</option>
-            </optgroup>
-          </select>
-        </div>
-        <!-- Expected values -->
-        <div class="fg"><label>Client</label><input id="eC" placeholder="ex: YOLANDE LAURENT"></div>
-        <div class="fg"><label>VIN (Numéro de châssis)</label><input id="eV" placeholder="ex: VF1RFA00464406472"></div>
-        <div class="fg"><label>Plaque d'immatriculation</label><input id="eP" placeholder="ex: 1UJY491"></div>
-        <div class="fg"><label>IBAN</label><input id="eI" placeholder="ex: BE09271008296057"></div>
-        <div class="fg full"><label>Adresse</label><input id="eA" placeholder="ex: RUE D OPPREBAIS, 1360 PERWEZ"></div>
+    <div class="input-grid">
+      <div class="input-group">
+        <label>Client Name *</label>
+        <input type="text" id="client-name" placeholder="e.g., Jan De Smet" autocomplete="off">
       </div>
-      <button class="btn" id="goBtn" disabled><span id="btnTxt">Vérifier les documents</span></button>
+      <div class="input-group">
+        <label>VIN *</label>
+        <input type="text" id="vin" placeholder="e.g., VF37J9HXCAJ716889" autocomplete="off" style="text-transform:uppercase">
+      </div>
+      <div class="input-group">
+        <label>License Plate *</label>
+        <input type="text" id="plate" placeholder="e.g., 1CFI968" autocomplete="off" style="text-transform:uppercase">
+      </div>
+      <div class="input-group">
+        <label>IBAN *</label>
+        <input type="text" id="iban" placeholder="e.g., BE68 5390 0754 7034" autocomplete="off">
+      </div>
+    </div>
+    <div class="ocr-row">
+      <input type="checkbox" id="ocr-toggle">
+      <label for="ocr-toggle">Enable OCR for scanned/image-based PDFs (slower — loads Tesseract.js)</label>
     </div>
   </div>
+</section>
 
-  <!-- Results -->
-  <div id="results">
+<!-- Documents -->
+<section>
+  <div class="section-title">Documents</div>
+  <div class="doc-grid" id="doc-grid"></div>
+</section>
 
-    <!-- Summary -->
-    <div class="sum-row" id="sumRow"></div>
+<button id="verify-btn">▶ Run Verification</button>
 
-    <!-- Vehicle info -->
-    <div class="card">
-      <div class="card-hd">🚗 Informations du véhicule</div>
-      <div class="card-bd">
-        <div class="cat" id="catBanner"></div>
-        <div class="vgrid" id="vGrid"></div>
-      </div>
-    </div>
-
-    <!-- Contract verification (5 points from WKA doc) -->
-    <div class="card">
-      <div class="card-hd">📝 Vérification du contrat (5 points WKA)</div>
-      <div class="card-bd">
-        <table>
-          <thead><tr><th>#</th><th>Point de contrôle</th><th>Valeur extraite</th><th>Attendu</th><th>Statut</th></tr></thead>
-          <tbody id="contractTb"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Client info comparison -->
-    <div class="card">
-      <div class="card-hd">👤 Informations client</div>
-      <div class="card-bd">
-        <table>
-          <thead><tr><th>Champ</th><th>Extrait du PDF</th><th>Attendu</th><th>Statut</th></tr></thead>
-          <tbody id="infoTb"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Documents checklist -->
-    <div class="card">
-      <div class="card-hd">📂 Liste des documents requis</div>
-      <div class="card-bd">
-        <table>
-          <thead><tr><th>Document</th><th>Requis</th><th>Détecté</th><th>Statut</th></tr></thead>
-          <tbody id="docTb"></tbody>
-        </table>
-        <div class="note">
-          ⚠️ <b>Carte ID</b> — scan image, vérification manuelle obligatoire (passeport accepté, jamais le permis).<br>
-          ℹ️ <b>Certificat d'immatriculation</b> — Volet 1 (Deel I / Partie I) et Volet 2 (Deel II / Partie II) sont détectés séparément. ✅ si trouvé, ❌ si absent, 👁 Manuel si aucun identifiant de volet n'est trouvé dans le PDF. 1 volet accepté si immatriculé avant 2013.<br>
-          ℹ️ <b>Carte bancaire / RIB</b> — un RIB (Relevé d'Identité Bancaire) textuel est détecté automatiquement. Une carte bancaire scannée indique 👁 Manuel — vérifier que le CVC est masqué.<br>
-          ℹ️ <b>Facture d'achat / Preuve de paiement</b> — si mentionnés uniquement dans le protocole comme "à fournir", ils sont correctement marqués comme manquants.<br>
-          ℹ️ La détection se base sur les mots-clés dans le texte OCR. Les PDFs entièrement scannés sont traités par OCR automatique.
-        </div>
-      </div>
-    </div>
-
-    <!-- Raw text debug -->
-    <details>
-      <summary>🔍 Texte brut extrait du PDF (diagnostic)</summary>
-      <textarea class="dbg" id="rawTxt" readonly></textarea>
-    </details>
+<!-- Results -->
+<section id="results" style="display:none">
+  <div class="section-title">Verification Results</div>
+  <div id="results-content"></div>
+  <div style="text-align:right;margin-top:12px">
+    <button onclick="window.print()" style="padding:7px 14px;border:1px solid rgba(128,128,128,.3);border-radius:6px;background:transparent;cursor:pointer;font-size:12px;font-family:inherit;color:inherit">🖨 Print / Save PDF</button>
   </div>
-
-</div><!-- /wrap -->
+</section>
 
 <script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+// ── PDF.js ────────────────────────────────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  let rawText = '';
+// ── Document types config ────────────────────────────────────────────────────
+const DOC_TYPES = [
+  { id:'handover', name:'Handover Protocol',       desc:'Koopovereenkomst / Contrat de vente',           icon:'📋', multiple:false },
+  { id:'readapp',  name:'Read & Approved',          desc:'Gelezen en goedgekeurd / Lu et approuvé',       icon:'✍️', multiple:false },
+  { id:'attest',   name:'Attestations',             desc:'3 attestations (1 multi-page PDF or 3 files)',  icon:'📑', multiple:true  },
+  { id:'id',       name:'ID / Procura',             desc:'Identity card(s) + power of attorney (if any)', icon:'🪪', multiple:false },
+  { id:'reg',      name:'Registration Certificate', desc:'Deel I+II / Partie I+II',                       icon:'📘', multiple:false },
+  { id:'tech',     name:'Technical Control',        desc:'Keuringsbewijs / Contrôle technique',           icon:'🔧', multiple:false },
+];
 
-  // ─── Upload ──────────────────────────────────────────────────
-  const dz = document.getElementById('dz');
-  const fi = document.getElementById('fi');
-  const goBtn = document.getElementById('goBtn');
+const uploadedFiles = {};
 
-  dz.addEventListener('click', () => fi.click());
-  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
-  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
-  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
-  fi.addEventListener('change', () => { if (fi.files[0]) loadFile(fi.files[0]); });
-
-  async function loadFile(file) {
-    document.getElementById('fname').textContent = file.name;
-    document.getElementById('pill').style.display = 'inline-flex';
-    document.getElementById('ocrBadge').style.display = 'none';
-    goBtn.disabled = true;
-    document.getElementById('btnTxt').textContent = 'Lecture du PDF…';
-    try {
-      rawText = await extractText(await file.arrayBuffer());
-      document.getElementById('rawTxt').value = rawText;
-      goBtn.disabled = false;
-      document.getElementById('btnTxt').textContent = 'Vérifier les documents';
-    } catch(e) {
-      document.getElementById('btnTxt').textContent = 'Erreur — réessayez';
-      alert('Erreur lecture PDF : ' + e.message);
-    }
-  }
-
-  function setProgress(label, pct) {
-    document.getElementById('progressWrap').style.display = 'block';
-    document.getElementById('progressLabel').textContent = label;
-    document.getElementById('progressFill').style.width = pct + '%';
-  }
-  function hideProgress() {
-    document.getElementById('progressWrap').style.display = 'none';
-  }
-
-  async function extractText(buf) {
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    const totalPages = pdf.numPages;
-
-    // First pass: collect text-layer content per page
-    const pageTexts = [];
-    for (let i = 1; i <= totalPages; i++) {
-      const page = await pdf.getPage(i);
-      const c = await page.getTextContent();
-      const t = c.items.map(x => x.str).join(' ').trim();
-      pageTexts.push({ page, text: t, index: i });
-    }
-
-    // Per-page approach: use OCR only for pages without sufficient text
-    const scannedPages = pageTexts.filter(p => p.text.length <= 30);
-
-    if (scannedPages.length === 0) {
-      // All pages have text layer — no OCR needed
-      return pageTexts.map(p => p.text).join('\n');
-    }
-
-    // Some or all pages need OCR
-    document.getElementById('ocrBadge').style.display = 'inline-block';
-    setProgress('Chargement OCR…', 2);
-
-    const worker = await Tesseract.createWorker('fra', 1, {
-      logger: m => {
-        if (m.status === 'loading tesseract core') {
-          setProgress('Chargement OCR…', Math.round((m.progress || 0) * 15));
-        } else if (m.status === 'loading language traineddata') {
-          setProgress('Téléchargement données linguistiques (~10 Mo)…', 15 + Math.round((m.progress || 0) * 20));
-        } else if (m.status === 'initializing api') {
-          setProgress('Préparation…', 35 + Math.round((m.progress || 0) * 5));
-        }
-      }
+// ── Render upload zones ───────────────────────────────────────────────────────
+function renderZones() {
+  const grid = document.getElementById('doc-grid');
+  grid.innerHTML = '';
+  DOC_TYPES.forEach(doc => {
+    const zone = document.createElement('div');
+    zone.className = 'upload-zone';
+    zone.id = 'zone-' + doc.id;
+    zone.innerHTML = `
+      <input type="file" id="file-${doc.id}" accept=".pdf,.jpg,.jpeg,.png,.tiff,.bmp" ${doc.multiple ? 'multiple' : ''}>
+      <div class="uz-icon">${doc.icon}</div>
+      <div class="uz-name">${doc.name}</div>
+      <div class="uz-desc">${doc.desc}</div>
+      ${doc.multiple ? '<div class="uz-multi-hint">Multiple files accepted</div>' : ''}
+      <div class="uz-fname" id="fname-${doc.id}"></div>
+    `;
+    const input = zone.querySelector('input');
+    const setFiles = fileList => {
+      if (!fileList.length) return;
+      uploadedFiles[doc.id] = doc.multiple ? fileList : fileList[0];
+      zone.classList.add('has-file');
+      const names = fileList.map(f => f.name).join(', ');
+      document.getElementById('fname-' + doc.id).textContent = names.length > 55 ? names.slice(0,52) + '…' : names;
+    };
+    input.addEventListener('change', e => setFiles(Array.from(e.target.files)));
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      setFiles(Array.from(e.dataTransfer.files));
     });
-
-    for (let i = 0; i < scannedPages.length; i++) {
-      const { page, index } = scannedPages[i];
-      const pct = 40 + Math.round((i / scannedPages.length) * 55);
-      setProgress(`OCR page ${index} / ${totalPages}…`, pct);
-
-      // Render page to canvas at 2x scale for better OCR accuracy
-      const viewport = page.getViewport({ scale: 2.0 });
-      const canvas = document.createElement('canvas');
-      canvas.width  = viewport.width;
-      canvas.height = viewport.height;
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-
-      const result = await worker.recognize(canvas);
-      // Replace empty text-layer with OCR result for this page
-      pageTexts.find(p => p.index === index).text = result.data.text;
-    }
-
-    await worker.terminate();
-    setProgress('OCR terminé ✓', 100);
-    setTimeout(hideProgress, 1500);
-
-    return pageTexts.map(p => p.text).join('\n');
-  }
-
-  // ─── Run ─────────────────────────────────────────────────────
-  goBtn.addEventListener('click', () => {
-    document.getElementById('btnTxt').innerHTML = '<span class="spin"></span>';
-    goBtn.disabled = true;
-    setTimeout(() => {
-      run();
-      document.getElementById('btnTxt').textContent = 'Vérifier les documents';
-      goBtn.disabled = false;
-    }, 250);
+    grid.appendChild(zone);
   });
+}
 
-  function run() {
-    const t   = rawText;
-    const p   = parse(t);
-    const docs = detectDocs(t);
-    const exp  = getExpected();
+// ── PDF text extraction ───────────────────────────────────────────────────────
+async function extractPages(file) {
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const pg = await pdf.getPage(i);
+      const ct = await pg.getTextContent();
+      pages.push(ct.items.map(it => it.str).join(' '));
+    }
+    return { pages, numPages: pdf.numPages };
+  } catch(e) {
+    return { pages: [], numPages: 0, error: e.message };
+  }
+}
 
-    // Determine deal type
-    let dealType = document.getElementById('dealType').value;
-    if (dealType === 'auto') dealType = autoDetectDeal(t, p);
+// OCR via Tesseract (loaded on demand) ----------------------------------------
+let tesseractReady = false;
+async function loadTesseract() {
+  if (window.Tesseract) { tesseractReady = true; return; }
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  tesseractReady = true;
+}
 
-    const req = getRequiredDocs(dealType);
+async function ocrFile(file) {
+  try {
+    await loadTesseract();
+    const { data: { text } } = await Tesseract.recognize(file, 'nld+fra+eng');
+    return text;
+  } catch(e) {
+    return '';
+  }
+}
 
-    document.getElementById('results').style.display = 'block';
-    renderSummary(docs, req);
-    renderVehicle(p, dealType);
-    renderContract(p, exp);
-    renderInfo(p, exp);
-    renderDocs(docs, req);
+async function extractText(file, useOCR) {
+  const { pages, numPages } = await extractPages(file);
+  const joined = pages.join(' ');
+  // If we got very little text and OCR is enabled, fall back to OCR
+  if (useOCR && joined.trim().length < 80) {
+    const ocrText = await ocrFile(file);
+    if (ocrText.length > joined.length) return { pages: [ocrText], numPages: 1, fromOCR: true };
+  }
+  return { pages, numPages, fromOCR: false };
+}
+
+async function extractMultipleFiles(files, useOCR) {
+  let allPages = [];
+  for (const f of files) {
+    const res = await extractText(f, useOCR);
+    allPages = allPages.concat(res.pages);
+  }
+  return allPages;
+}
+
+// ── Text helpers ─────────────────────────────────────────────────────────────
+const norm    = s => (s||'').toLowerCase().replace(/[\s\-\.,:;''""\u2019]/g,'');
+const normIBAN= s => (s||'').toUpperCase().replace(/[\s\-]/g,'');
+
+function has(haystack, needle) {
+  if (!needle||!haystack) return false;
+  return norm(haystack).includes(norm(needle));
+}
+function hasAny(haystack, arr) { return arr.some(n => has(haystack, n)); }
+
+function nameMatch(text, name) {
+  if (!name||!text) return false;
+  const parts = name.trim().split(/\s+/).filter(p => p.length >= 3);
+  if (!parts.length) return has(text, name);
+  return parts.some(p => norm(text).includes(norm(p)));
+}
+function vinMatch(text, vin) {
+  if (!vin||!text) return false;
+  const v = vin.replace(/\s/g,'').toUpperCase();
+  return text.toUpperCase().replace(/\s/g,'').includes(v);
+}
+function plateMatch(text, plate) {
+  if (!plate||!text) return false;
+  return norm(text).includes(norm(plate.replace(/[\s\-]/g,'')));
+}
+function ibanMatch(text, iban) {
+  if (!iban||!text) return false;
+  const in_ = normIBAN(iban);
+  return text.toUpperCase().replace(/[\s\-]/g,'').includes(in_);
+}
+
+function detectLang(text) {
+  const t = (text||'').toLowerCase();
+  const nl = ['koopovereenkomst','koper','verkoper','voertuig','kenteken','gelezen','goedgekeurd','deel','bewijs','rijksregister','inschrijvingsbewijs'].filter(w=>t.includes(w)).length;
+  const fr = ['contrat','acheteur','vendeur','véhicule','immatriculation','approuvé','partie','certificat','quittance','enregistrement'].filter(w=>t.includes(w)).length;
+  return nl>=fr ? 'NL' : 'FR';
+}
+
+function findDates(text) {
+  const pat = /\b(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})\b/g;
+  const out = [];
+  let m;
+  while ((m=pat.exec(text))!==null) {
+    const d = new Date(+m[3], +m[2]-1, +m[1]);
+    if (!isNaN(d) && d.getFullYear()>=2000 && d.getFullYear()<=2050) out.push({date:d,raw:m[0]});
+  }
+  return out;
+}
+
+// ── Check result helper ───────────────────────────────────────────────────────
+const chk = (label,status,detail) => ({label,status,detail:detail||''});
+// status: 'pass' | 'warn' | 'fail' | 'info'
+
+const TODAY = new Date();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VERIFICATION FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Handover Protocol ─────────────────────────────────────────────────────────
+async function verifyHandover(file, name, vin, plate, useOCR) {
+  if (!file) return { skipped:true, checks:[chk('File','info','No file uploaded')] };
+  const { pages, fromOCR } = await extractText(file, useOCR);
+  if (!pages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read PDF')] };
+  const all = pages.join(' ');
+  const checks = [];
+
+  if (fromOCR) checks.push(chk('Extraction method','info','Text extracted via OCR (scanned document)'));
+
+  const lang = detectLang(all);
+  checks.push(chk('Language','info', lang==='NL' ? 'Dutch (NL)' : 'French (FR)'));
+
+  const isDoc = hasAny(all,['koopovereenkomst','contrat de vente','handover','protocol','purchase agreement','verkoopcontract']);
+  checks.push(chk('Document type', isDoc?'pass':'warn', isDoc?'Handover Protocol / Koopovereenkomst identified':'Document type not clearly identified — verify manually'));
+
+  checks.push(chk('Client name', nameMatch(all,name)?'pass':'fail', nameMatch(all,name)?`"${name}" found`:`"${name}" not found in document`));
+  checks.push(chk('VIN', vinMatch(all,vin)?'pass':'fail', vinMatch(all,vin)?`${vin} found`:`${vin} not found`));
+  checks.push(chk('License plate', plateMatch(all,plate)?'pass':'fail', plateMatch(all,plate)?`${plate} found`:`${plate} not found`));
+
+  // Address: look for street types or Belgian postal code pattern
+  const hasAddr = /\b\d{4}\s+[A-Za-z]/.test(all) ||
+    hasAny(all.toLowerCase(),['straat','laan','weg','plein','avenue','rue ','boulevard','chemin','steenweg','dreef']);
+  checks.push(chk('Address', hasAddr?'pass':'warn', hasAddr?'Address / postal code detected':'No clear address found — manual check'));
+
+  const dates = findDates(all);
+  checks.push(chk('Date(s) present', dates.length?'pass':'warn',
+    dates.length ? `Found: ${dates.slice(0,4).map(d=>d.raw).join(', ')}` : 'No dates detected'));
+
+  return { skipped:false, checks, lang };
+}
+
+// ── Read & Approved ───────────────────────────────────────────────────────────
+async function verifyReadApproved(file, name, useOCR) {
+  if (!file) return { skipped:true, checks:[chk('File','info','No file uploaded')] };
+  const { pages, fromOCR } = await extractText(file, useOCR);
+  if (!pages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read PDF')] };
+  const all = pages.join(' ');
+  const checks = [];
+  if (fromOCR) checks.push(chk('Extraction method','info','Text via OCR'));
+
+  const hasNL = has(all,'gelezen en goedgekeurd') || has(all,'gelezengoedgekeurd') ||
+                has(all,'gelezen&goedgekeurd') || /gelezen\s*[&en]+\s*goedgekeurd/i.test(all);
+  const hasFR = has(all,'lu et approuvé') || has(all,'lu et approuve') ||
+                has(all,'luetapprouvé') || /lu\s*et\s*approuv/i.test(all);
+
+  if (hasNL || hasFR) {
+    checks.push(chk('Phrase found','pass', hasNL?'"Gelezen en goedgekeurd" (NL) present':'"Lu et approuvé" (FR) present'));
+  } else {
+    checks.push(chk('Phrase found','fail',
+      'Neither "gelezen en goedgekeurd" nor "lu et approuvé" found. ' +
+      'If handwritten only (not searchable), manual verification required.'));
   }
 
-  // ─── Auto-detect deal type ────────────────────────────────────
-  function autoDetectDeal(t, p) {
-    const tl = t.toLowerCase();
-    const isVAT     = /assujetti\s+[àa]\s+la\s+tva|vendeur\s+est\s+assujetti|\bvat\b/i.test(t) && !/n.est\s+pas\s+assujetti/i.test(t);
-    const isMarge   = /taxation\s+sur\s+la\s+marge|r[eé]gime\s+de\s+la\s+marge|n.est\s+pas\s+assujetti/i.test(t);
-    const hasFin    = /formulaire\s+d.autorisation|remise.*financement|sous\s+financement/i.test(t);
-    const hasLease  = /leasing|bail\s+financier/i.test(t);
-    const hasDeces  = /certificat\s+de\s+d[eé]c[eè]s|h[eé]r[eé]dit[eé]/i.test(t);
-    const isLux     = /luxembourg|d[eé]simmatriculation/i.test(t);
-    const isDiplo   = /diplomate|\bCD\b|corps\s+diplomatique/i.test(t);
-    const isArt44   = /art\s*\.?\s*44|exon[eé]r[eé].{0,20}tva/i.test(t);
+  checks.push(chk('Client name', nameMatch(all,name)?'pass':'warn',
+    nameMatch(all,name)?`"${name}" found`:`"${name}" not found — manual check if handwritten`));
 
-    const price   = p.priceNum || 0;
-    const ageYrs  = p.firstReg ? (Date.now() - parseDate(p.firstReg)) / (1000*60*60*24*365.25) : 6;
-    const isExtra = price >= 15000 || ageYrs <= 5;
+  checks.push(chk('Signature','info','Visual signatures cannot be auto-verified — confirm handwritten signature is present'));
 
-    if (isLux && isVAT)  return 'lux_vat';
-    if (isLux)           return 'lux_marge';
-    if (isDiplo)         return 'diplomate';
-    if (isVAT && hasFin && hasLease) return 'vat_lease_non';
-    if (isVAT && hasFin) return 'vat_fin';
-    if (isVAT && isArt44) return 'vat_art44';
-    if (isVAT && isExtra) return 'vat_extra';
-    if (isVAT)           return 'vat_plus5_moins15';
-    if (isMarge && hasDeces) return 'marge_deces';
-    if (isMarge && hasFin && isExtra) return 'marge_fin_plus';
-    if (isMarge && hasFin) return 'marge_fin_moins';
-    if (isMarge && isExtra) return 'marge_extra';
-    if (isMarge)          return 'marge_ord';
-    return 'marge_ord'; // fallback
+  return { skipped:false, checks };
+}
+
+// ── Attestations ──────────────────────────────────────────────────────────────
+async function verifyAttestations(fileOrArr, name, vin, useOCR) {
+  const missing = !fileOrArr || (Array.isArray(fileOrArr) && !fileOrArr.length);
+  if (missing) return { skipped:true, checks:[chk('File','info','No file(s) uploaded')] };
+  const flist = Array.isArray(fileOrArr) ? fileOrArr : [fileOrArr];
+  const allPages = await extractMultipleFiles(flist, useOCR);
+  const checks = [];
+
+  if (!allPages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read attestation PDF(s)')] };
+
+  checks.push(chk('Files / pages','info',`${flist.length} file(s), ${allPages.length} page(s) extracted`));
+
+  if (allPages.length < 3) {
+    checks.push(chk('Page count','warn',`Expected 3 attestation pages, got ${allPages.length} — ensure all 3 attestations are uploaded`));
+  } else {
+    checks.push(chk('Page count','pass',`${allPages.length} page(s) — at least 3 found`));
   }
 
-  function parseDate(str) {
-    const [d,m,y] = str.split('.');
-    return new Date(+y,+m-1,+d).getTime();
+  const p = [allPages[0]||'', allPages[1]||'', allPages[2]||''];
+
+  // Name on all pages
+  const nameOK = p.map((pg,i) => ({i:i+1,ok:nameMatch(pg,name)}));
+  const allName = nameOK.every(x=>x.ok);
+  checks.push(chk('Client name on all pages', allName?'pass':'fail',
+    allName ? `"${name}" on all pages` :
+    `Missing on page(s): ${nameOK.filter(x=>!x.ok).map(x=>x.i).join(', ')}`));
+
+  // VIN on all pages
+  const vinOK = p.map((pg,i) => ({i:i+1,ok:vinMatch(pg,vin)}));
+  const allVIN = vinOK.every(x=>x.ok);
+  checks.push(chk('VIN on all pages', allVIN?'pass':'fail',
+    allVIN ? `${vin} on all pages` :
+    `Missing on page(s): ${vinOK.filter(x=>!x.ok).map(x=>x.i).join(', ')}`));
+
+  // Dates on all pages
+  const datesPerPage = p.map(pg => findDates(pg));
+  const allDates = datesPerPage.every(d=>d.length>0);
+  checks.push(chk('Dates on all pages', allDates?'pass':'warn',
+    `P1: ${datesPerPage[0].map(d=>d.raw).join(',')||'none'} | P2: ${datesPerPage[1].map(d=>d.raw).join(',')||'none'} | P3: ${datesPerPage[2].map(d=>d.raw).join(',')||'none'}`));
+
+  // Dates consistent across pages
+  if (allDates) {
+    const d1 = datesPerPage[0][0]?.raw, d2 = datesPerPage[1][0]?.raw, d3 = datesPerPage[2][0]?.raw;
+    const consistent = d1===d2 && d2===d3;
+    checks.push(chk('Dates consistent','pass', consistent ? `Same date across pages (${d1})` : `Dates differ: ${d1} | ${d2} | ${d3} — verify manually`));
   }
 
-  // ─── Parse PDF fields ────────────────────────────────────────
-  function parse(t) {
-    const r = {};
+  // Price check
+  const priceRe = /[€$£]\s*\d|\d\s*[€$]|\b(EUR|euro|prix|prijs|bedrag|montant|price)\b|\d{3,}[,\.]\d{2}\s*(EUR|€)?/i;
+  const hasP = p.map(pg => priceRe.test(pg));
+  checks.push(chk('Price on page 1', hasP[0]?'pass':'warn', hasP[0]?'Amount/price detected':'No price detected (check manually)'));
+  if (allPages.length>=2) checks.push(chk('Price on page 2', hasP[1]?'pass':'warn', hasP[1]?'Amount/price detected':'No price detected'));
+  if (allPages.length>=3) checks.push(chk('No price on page 3', !hasP[2]?'pass':'fail',
+    !hasP[2]?'Correct — no price on page 3':'Price/amount found on page 3 — should not be present'));
 
-    // Name: from "Transfert à: NAME, BE..." (most reliable in AUTO1 contracts)
-    const tr = t.match(/Transfert\s+[àa]\s*:\s*(.+?),\s*BE\d/i);
-    if (tr) {
-      r.customer = tr[1].trim();
+  checks.push(chk('Signatures (2 per page)','info','Visual check required — confirm 2 signature boxes are signed on each attestation page'));
+
+  return { skipped:false, checks };
+}
+
+// ── ID / Procura ──────────────────────────────────────────────────────────────
+async function verifyIDProcura(file, name, vin, iban, useOCR) {
+  if (!file) return { skipped:true, checks:[chk('File','info','No file uploaded')] };
+  const { pages, fromOCR } = await extractText(file, useOCR);
+  if (!pages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read PDF')] };
+  const all = pages.join(' ');
+  const checks = [];
+  if (fromOCR) checks.push(chk('Extraction method','info','Text via OCR'));
+
+  checks.push(chk('Pages','info',`${pages.length} page(s)`));
+
+  // Procura detection
+  const hasProcura = hasAny(all.toLowerCase(),['procura','volmacht','procuration','mandataire','gemachtigde','mandaat','power of attorney','volmacht geeft','gevolmachtigde']);
+  checks.push(chk('Document type','info', hasProcura ? 'Procura (Power of Attorney) detected' : 'Standard ID (no Procura detected)'));
+
+  if (hasProcura) {
+    // Two ID cards expected
+    const idRefs = (all.match(/\b(identiteitskaart|carte\s*d['']identit|rijksregister|numéro\s*national|nationaal\s*nr|eId|ID\s*card|paspoort|passport|kaart\s*nr|nr\.\s*\d)/gi)||[]).length;
+    checks.push(chk('2 ID cards (Procura)', idRefs>=2?'pass':'warn',
+      idRefs>=2 ? `${idRefs} ID reference(s) found — OK` :
+      `Only ${idRefs} ID reference(s) detected — 2 required. Manual check if IDs are image-only.`));
+
+    checks.push(chk('VIN in Procura', vinMatch(all,vin)?'pass':'fail',
+      vinMatch(all,vin)?`${vin} found in Procura`:`${vin} not found — must appear in power of attorney`));
+
+    checks.push(chk('Proxy signature consistency','info','Visual check: confirm proxy signature in Procura matches signature on attestations and Handover Protocol'));
+  }
+
+  // Name in ID
+  checks.push(chk('Client name in ID', nameMatch(all,name)?'pass':'fail',
+    nameMatch(all,name)?`"${name}" found`:`"${name}" not found. Manual check required if ID is image-based.`));
+
+  // IBAN
+  checks.push(chk('IBAN match', ibanMatch(all,iban)?'pass':'fail',
+    ibanMatch(all,iban) ?
+      `IBAN ${iban} found` :
+      `IBAN ${iban} not found. Note: the bank card holder's name does NOT need to match — only the IBAN number matters.`));
+
+  checks.push(chk('Signature with rest of contract','info','Visual check: confirm one signature on Handover Protocol matches signatures on attestations'));
+
+  return { skipped:false, checks };
+}
+
+// ── Registration Certificate ──────────────────────────────────────────────────
+async function verifyRegistration(file, name, vin, plate, useOCR) {
+  if (!file) return { skipped:true, checks:[chk('File','info','No file uploaded')] };
+  const { pages, fromOCR } = await extractText(file, useOCR);
+  if (!pages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read PDF')] };
+  const all = pages.join(' ');
+  const checks = [];
+  if (fromOCR) checks.push(chk('Extraction method','info','Text via OCR'));
+
+  const lang = detectLang(all);
+  checks.push(chk('Language','info', lang==='NL' ? 'Dutch (NL)' : 'French (FR)'));
+  checks.push(chk('Pages','info',`${pages.length} page(s)`));
+
+  // Both parts detection
+  const has1 = hasAny(all,['deel i','deel 1','partie i','partie 1','part i','inschrijvingsbewijs','certificat d\'immatriculation','bewijs van inschrijving']);
+  const has2 = hasAny(all,['deel ii','deel 2','partie ii','partie 2','part ii']);
+
+  if (pages.length >= 2) {
+    checks.push(chk('Both parts present','pass',
+      `${pages.length} pages found — ${lang==='NL'?'Deel I + Deel II':'Partie I + Partie II'} assumed present`));
+  } else if (has1 && has2) {
+    checks.push(chk('Both parts present','pass','Part I and Part II both identified in document'));
+  } else if (has1 || has2) {
+    checks.push(chk('Both parts present','warn',
+      `Only ${has1?'Part I':'Part II'} clearly identified — ensure both parts are included`));
+  } else {
+    checks.push(chk('Both parts present','warn','Could not clearly identify Part I / Part II — verify manually'));
+  }
+
+  checks.push(chk('Client name', nameMatch(all,name)?'pass':'fail', nameMatch(all,name)?`"${name}" found`:`"${name}" not found`));
+  checks.push(chk('VIN', vinMatch(all,vin)?'pass':'fail', vinMatch(all,vin)?`${vin} found`:`${vin} not found`));
+  checks.push(chk('License plate', plateMatch(all,plate)?'pass':'fail', plateMatch(all,plate)?`${plate} found`:`${plate} not found`));
+
+  return { skipped:false, checks };
+}
+
+// ── Technical Control ─────────────────────────────────────────────────────────
+async function verifyTechControl(file, vin, plate, useOCR) {
+  if (!file) return { skipped:true, checks:[chk('File','info','No file uploaded')] };
+  const { pages, fromOCR } = await extractText(file, useOCR);
+  if (!pages.length) return { skipped:false, checks:[chk('Text extraction','fail','Could not read PDF')] };
+  const all = pages.join(' ');
+  const checks = [];
+  if (fromOCR) checks.push(chk('Extraction method','info','Text via OCR'));
+
+  checks.push(chk('VIN', vinMatch(all,vin)?'pass':'fail', vinMatch(all,vin)?`${vin} found`:`${vin} not found`));
+  checks.push(chk('License plate', plateMatch(all,plate)?'pass':'fail', plateMatch(all,plate)?`${plate} found`:`${plate} not found`));
+
+  // Find expiry date
+  let expiryDate = null;
+  const expiryKeyRe = /geldig\s*tot|valable\s*jusqu|vervaldatum|date\s*(?:d['']expiration|limite)|geldig\s*t\/m|expir|keuring\s*geldig/i;
+
+  // Split into pseudo-lines and find expiry-related context
+  const sentences = all.split(/[\n\r]|(?<=[?!.])\s/).map(s=>s.trim()).filter(Boolean);
+  for (const sen of sentences) {
+    if (expiryKeyRe.test(sen)) {
+      const ds = findDates(sen);
+      if (ds.length) { expiryDate = ds[ds.length-1].date; break; }
+    }
+  }
+
+  // Fallback: latest plausible date in document
+  if (!expiryDate) {
+    const allDates = findDates(all).filter(d => d.date.getFullYear()>=2023 && d.date.getFullYear()<=2035);
+    if (allDates.length) {
+      allDates.sort((a,b)=>b.date-a.date);
+      expiryDate = allDates[0].date;
+    }
+  }
+
+  if (!expiryDate) {
+    checks.push(chk('Expiry date','warn','Could not auto-detect expiry date — manual check required'));
+  } else {
+    const diffMs = expiryDate.getTime() - TODAY.getTime();
+    const diffDays = Math.round(diffMs / 86400000);
+    const fmt = expiryDate.toLocaleDateString('en-GB');
+    if (diffMs > 0) {
+      checks.push(chk('Expiry date','pass',`Valid until ${fmt} (${diffDays} days remaining)`));
     } else {
-      const nm = t.match(/([A-ZÀÁÂÄÉÈÊËÎÏÔÙÛÜ]{2,}),\s*([A-ZÀÁÂÄÉÈÊËÎÏÔÙÛÜ]{2,})/);
-      if (nm) r.customer = nm[2] + ' ' + nm[1];
-    }
-
-    // VIN
-    const vin = t.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
-    if (vin) r.vin = vin[1];
-
-    // Belgian plate: 1-ABC-123
-    const pl = t.match(/\b([1-9][A-Z]{3}[0-9]{3})\b/);
-    if (pl) r.plate = pl[1];
-
-    // IBAN: BE + 14 digits (not VAT = BE + 10 digits)
-    // Also handles spaced format: "BE74 0016 9320 3607" or "BE74001693203607"
-    const ib = t.match(/\bBE\d{2}(?:\s?\d{4}){3}\b/) || t.match(/\bBE\d{14}\b/);
-    if (ib) r.iban = ib[0].replace(/\s/g,'');
-
-    // BIC/Bank
-    const bic = t.match(/\b([A-Z]{4}BE[A-Z0-9]{2,5})\b/);
-    if (bic) r.bic = bic[1];
-
-    // Price (after "Prix d'achat", Belgian format: dots or spaces = thousands, comma = decimal)
-    // Handles: "28.045 EUR", "28 045,00 €", "863 €", "863 EUR"
-    const pm = t.match(/Prix\s+d[''´']achat[^0-9]{0,40}([\d]{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?)\s*(?:EUR|€)/i)
-            || t.match(/([\d]{1,3}(?:\.\d{3})+)\s*(?:EUR|€)/);
-    if (pm) {
-      const raw = pm[1].replace(/[\s.]+/g,'').replace(',','.');
-      r.priceNum = parseFloat(raw);
-      r.price    = pm[1].replace(/\s+/g,'.') + ' EUR';
-    }
-
-    // Dates: past = first reg, future = next CT, current year = ignore (deposit)
-    const today = new Date(); today.setHours(0,0,0,0);
-    const allD = [...t.matchAll(/\b(\d{2}\.\d{2}\.\d{4})\b/g)].map(m => {
-      const [d,mo,y] = m[1].split('.');
-      return { str: m[1], dt: new Date(+y,+mo-1,+d) };
-    });
-    r.firstReg = (allD.find(x => x.dt < today) || {}).str;
-    r.nextCT   = (allD.find(x => x.dt > today) || {}).str;
-
-    // Street + house number
-    const stM = t.match(/\b((?:RUE|AVENUE|BOULEVARD|CHEMIN|CHAUSS[EÉ]E|ALL[EÉ]E|PLACE|DRÈVE|STRAAT|LAAN|DREEF|WEG|STEENWEG)\s+[A-Z0-9'\s\-ÀÁÂÄÉÈÊËÎÏÔÙÛÜ]+?(?:,\s*\d+)?)\s*(?=\n|\+\d|\d{4}|$)/i);
-    if (stM) r.street = stM[1].trim().replace(/\s+/g,' ');
-
-    // Postal code + city
-    const pcM = t.match(/\b([1-9]\d{3})\b,?\s+([A-ZÀÁÂÄÉÈÊËÎÏÔÙÛÜ]{3,})/);
-    if (pcM) r.postalCity = pcM[1] + ' ' + pcM[2];
-
-    if (r.street && r.postalCity) r.address = r.street + ', ' + r.postalCity;
-
-    // Make / model
-    const mkM = t.match(/(Renault|Peugeot|Citro[eë]n|Volkswagen|BMW|Mercedes|Audi|Toyota|Ford|Opel|Fiat|Seat|Skoda|Hyundai|Kia|Dacia|Volvo|Nissan|Honda|Suzuki|Mazda|Land\s*Rover|Jeep|Mini|Porsche|Alfa\s*Romeo|Lancia|Jaguar)[^\n]*/i);
-    if (mkM) r.makeModel = mkM[0].trim().substring(0,65);
-
-    // Signatures: check if "Signature du vendeur" and "Signature de l'acheteur" present
-    r.sigVendeur  = /Signature\s+du\s+vendeur/i.test(t);
-    r.sigAcheteur = /Signature\s+de\s+l.acheteur/i.test(t);
-    r.signatures  = r.sigVendeur && r.sigAcheteur;
-
-    return r;
-  }
-
-  // ─── Detect documents present ─────────────────────────────────
-  function detectDocs(t) {
-    const has = rx => rx.test(t);
-
-    // Attestation TVA: count occurrences to distinguish avec/sans versions.
-    // The protocol lists them as "Certificat de TVA avec prix" and "Certificat de TVA sans prix".
-    // The actual documents both have title "ATTESTATION TVA" (no avec/sans in title).
-    const attCount = (t.match(/attestation\s+tva/gi) || []).length;
-    // "avec prix" = protocol explicitly names it, OR there's an attestation TVA AND a price line
-    const attWithPrice = /(?:certificat|attestation)\s+(?:de\s+)?tva\s+avec\s+prix/i.test(t)
-                      || (attCount >= 1 && /Prix\s+d.achat\s+[\d]/i.test(t));
-    const attSansPhrase = /(?:certificat|attestation)\s+(?:de\s+)?tva\s+sans\s+prix/i.test(t);
-
-    // RIB = Relevé d'Identité Bancaire (bank proof, text-readable)
-    // Also detect labeled IBAN field from bank card OCR
-    const hasRIB = /relev[eé]\s+d.identit[eé]\s+bancaire|\bRIB\b/i.test(t);
-    const hasLabeledIBAN = /num[eé]ro\s+de\s+compte\s*\(?IBAN\)?|IBAN\s*:\s*BE\d|\bIBAN\s+BE\d/i.test(t);
-
-    return {
-      contrat:          has(/Contrat\s+(d[''´']achat|n[°o]\.?\s*\w)/i),
-      cond_gen:         has(/conditions\s+g[eé]n[eé]rales/i),
-      lu_approuve:      has(/lu\s+et\s+approuv[eé]/i),
-      protocol:         has(/protocole?\s+de\s+remise|hand[\s-]?over/i),
-      attest_avec:      attCount >= 2 || attWithPrice,
-      attest_sans:      attCount >= 2 || attSansPhrase,
-      decl_honneur:     has(/d[eé]claration\s+sur\s+(l[''´'])?honneur/i),
-      ctrl_tech:        has(/contr[oô]le\s+technique/i),
-      // COC: French title, Dutch title (EG-Certificaat van overeenstemming), or acronym
-      coc:              has(/certificat\s+de\s+conformit[eé]|overeenstemming|\bC\.?O\.?C\.?\b/i),
-      decl_hon_art44:   has(/d[eé]claration\s+sur\s+(l[''´'])?honneur.*art[\s.]*44/i) || (has(/d[eé]claration\s+sur\s+(l[''´'])?honneur/i) && has(/art[\s.]*44/i)),
-      attest_art44:     has(/attestation\s+tva.*art[\s.]*44/i) || (has(/attestation\s+tva/i) && has(/art[\s.]*44/i)),
-      form_autorisation:has(/formulaire\s+d[''´']autorisation\s+de\s+reprise/i),
-      // facture_achat / preuve_paiement: only count as present if NOT mentioned
-      // solely as "à fournir" / pending in the protocol of remise
-      facture_achat:    [...t.matchAll(/facture\s+d[''´']achat/gi)].some(m =>
-                          !/[àa]\s+fournir|non\s+fourni|manquant/i.test(t.substring(m.index, m.index + 150))),
-      preuve_paiement:  [...t.matchAll(/preuve\s+de\s+paiement/gi)].some(m =>
-                          !/[àa]\s+fournir|non\s+fourni|manquant/i.test(t.substring(m.index, m.index + 150))),
-      facture_vente:    has(/facture\s+(de\s+vente|tva)/i),
-      solde_ouvert:     has(/solde\s+ouvert/i),
-      facture_sortie:   has(/facture\s+de\s+sortie|facture\s+interm[eé]diaire/i),
-      cert_deces:       has(/certificat\s+de\s+d[eé]c[eè]s/i),
-      cert_heredite:    has(/certificat\s+d[''´']h[eé]r[eé]dit[eé]|acte\s+d[''´']h[eé]r[eé]dit[eé]/i),
-      procuration:      has(/procuration/i),
-      e705:             has(/e[\s-]?705/i),
-      coa:              has(/\bCO-?A\b/i),
-      desimmat:         has(/d[eé]simmatriculation/i),
-      facture_fin_lease:has(/facture\s+de\s+fin\s+de\s+leasing/i),
-      doc_vente_tiers:  has(/vente\s+[àa]\s+un\s+tiers/i),
-      proforma:         has(/proforma/i),
-      carte_id:         null,  // always a scanned image
-      // cert_immat_1 / cert_immat_2: detect each volet via language-specific part labels
-      // NL: "Deel I" / "Deel II" — FR: "Partie I" / "Partie II" — DE: "Teil I" / "Teil II"
-      // If no volet label found at all → null (manual). If found → true/false per volet.
-      cert_immat_1: (() => {
-        const hasAny = /\b(?:Deel|Partie|Teil)\s+I{1,2}\b/i.test(t);
-        if (!hasAny) return null;
-        return /\bDeel\s+I\b|\bPartie\s+I\b|\bTeil\s+I\b/i.test(t);
-      })(),
-      cert_immat_2: (() => {
-        const hasAny = /\b(?:Deel|Partie|Teil)\s+I{1,2}\b/i.test(t);
-        if (!hasAny) return null;
-        return /\bDeel\s+II\b|\bPartie\s+II\b|\bTeil\s+II\b/i.test(t);
-      })(),
-      // Bank proof: RIB document (text) or labeled IBAN field from bank card OCR; else manual
-      carte_banc:       (hasRIB || hasLabeledIBAN) ? true : null,
-    };
-  }
-
-  // ─── Required docs per deal type (from WKA document) ─────────
-  function getRequiredDocs(type) {
-    const base_marge = [
-      { key:'contrat',      label:"Contrat d'achat",                              note:"Contrat signé par acheteur et vendeur" },
-      { key:'cond_gen',     label:'Conditions générales',                         note:'' },
-      { key:'lu_approuve',  label:'Conditions générales — "Lu et approuvé"',      note:'Mention obligatoire sur le document' },
-      { key:'protocol',     label:'Protocol (Hand over)',                          note:'Signé par acheteur et vendeur lors de la remise' },
-      { key:'attest_avec',  label:'Attestation TVA avec prix',                    note:'' },
-      { key:'attest_sans',  label:'Attestation TVA sans prix',                    note:'Accompagne les véhicules pour export' },
-      { key:'decl_honneur', label:"Déclaration sur l'honneur",                    note:'Doit mentionner VIN, prix d\'achat + signatures' },
-      { key:'carte_id',     label:'Carte ID (scan lisible + date valide)',         note:'Passeport accepté. JAMAIS le permis de conduire' },
-      { key:'carte_banc',   label:'Carte bancaire (CVC obligatoirement masqué)',  note:'' },
-      { key:'ctrl_tech',    label:'Contrôle technique',                           note:'Expiré accepté si < 1 an. CT rouge accepté si pris en compte dans expertise' },
-      { key:'coc',          label:'COC (Certificat de conformité)',               note:'Vérifier correspondance VIN' },
-      { key:'cert_immat_1', label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'1 volet accepté si immatriculé avant 2013' },
-      { key:'cert_immat_2', label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'1 volet accepté si immatriculé avant 2013' },
-    ];
-
-    const base_vat = [
-      { key:'contrat',      label:"Contrat d'achat",                              note:'' },
-      { key:'cond_gen',     label:'Conditions générales',                         note:'' },
-      { key:'lu_approuve',  label:'Conditions générales — "Lu et approuvé"',      note:'' },
-      { key:'protocol',     label:'Protocol (Hand over)',                          note:'' },
-      { key:'decl_honneur', label:"Déclaration sur l'honneur",                    note:'' },
-      { key:'carte_id',     label:'Carte ID',                                     note:'Si vendeur ≠ administrateur : procuration + ID administrateur' },
-      { key:'carte_banc',   label:'Carte bancaire ou relevé d\'identité bancaire',note:'' },
-      { key:'ctrl_tech',    label:'Contrôle technique',                           note:'' },
-      { key:'coc',          label:'COC (Certificat de conformité)',               note:'' },
-      { key:'cert_immat_1', label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
-      { key:'cert_immat_2', label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
-      { key:'facture_vente',label:'Facture de vente avec TVA (21% ou 50%)',       note:'Taux à vérifier dans Admin' },
-    ];
-
-    const maps = {
-      marge_ord: base_marge,
-
-      marge_extra: [...base_marge,
-        { key:'facture_achat',   label:"Facture d'achat",         note:'Vérifier nom + VIN. Si au nom d\'une banque → véhicule en leasing' },
-        { key:'preuve_paiement', label:'Preuve de paiement',      note:'Montant doit correspondre à la facture d\'achat' },
-      ],
-
-      marge_fin_plus: [
-        { key:'contrat',          label:"Contrat d'achat",           note:'' },
-        { key:'cond_gen',         label:'Conditions générales',       note:'' },
-        { key:'lu_approuve',      label:'Conditions générales — "Lu et approuvé"', note:'' },
-        { key:'protocol',         label:'Protocol (Hand over)',        note:'' },
-        { key:'attest_avec',      label:'Attestation TVA avec prix',  note:'' },
-        { key:'attest_sans',      label:'Attestation TVA sans prix',  note:'' },
-        { key:'form_autorisation',label:"Formulaire d'autorisation de reprise sous financement", note:'Vérifier nom + VIN. Case "Véhicule en Gage" → demander solde ouvert' },
-        { key:'carte_id',         label:'Carte ID',                   note:'' },
-        { key:'carte_banc',       label:'Carte bancaire',             note:'' },
-        { key:'ctrl_tech',        label:'Contrôle technique',         note:'' },
-        { key:'coc',              label:'COC',                        note:'' },
-        { key:'cert_immat_1',     label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
-        { key:'cert_immat_2',     label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
-        { key:'facture_achat',    label:"Facture d'achat",            note:'' },
-        { key:'solde_ouvert',     label:'Solde ouvert du prêt',       note:'Pour banques collatérales uniquement' },
-      ],
-
-      marge_fin_moins: [
-        { key:'contrat',          label:"Contrat d'achat",           note:'' },
-        { key:'cond_gen',         label:'Conditions générales',       note:'' },
-        { key:'lu_approuve',      label:'Conditions générales — "Lu et approuvé"', note:'' },
-        { key:'protocol',         label:'Protocol (Hand over)',        note:'' },
-        { key:'attest_avec',      label:'Attestation TVA avec prix',  note:'' },
-        { key:'attest_sans',      label:'Attestation TVA sans prix',  note:'' },
-        { key:'form_autorisation',label:"Formulaire d'autorisation de reprise sous financement", note:'Vérifier nom + VIN' },
-        { key:'carte_id',         label:'Carte ID',                   note:'' },
-        { key:'carte_banc',       label:'Carte bancaire',             note:'' },
-        { key:'ctrl_tech',        label:'Contrôle technique',         note:'' },
-        { key:'coc',              label:'COC',                        note:'' },
-        { key:'cert_immat_1',     label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
-        { key:'cert_immat_2',     label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
-        { key:'solde_ouvert',     label:'Solde ouvert du prêt',       note:'Banques collatérales uniquement. PAS de facture d\'achat pour ce type' },
-      ],
-
-      marge_deces: [...base_marge,
-        { key:'cert_deces',    label:'Certificat de décès',           note:'' },
-        { key:'cert_heredite', label:"Certificat / Acte d'hérédité",  note:'Option: mail du notaire listant les héritiers' },
-        { key:'procuration',   label:'Procuration signée par chaque héritier + ID', note:'Non requis si notaire demande paiement sur compte de succession' },
-      ],
-
-      marge_facture: [...base_marge,
-        { key:'facture_sortie', label:'Facture de sortie / facture intermédiaire', note:'Obligatoire si immat au nom d\'une société. Prix doit être cohérent. PAS de preuve de paiement pour ce type' },
-      ],
-
-      vat_plus5_moins15: base_vat,
-
-      vat_art44: [
-        { key:'contrat',          label:"Contrat d'achat",           note:'' },
-        { key:'cond_gen',         label:'Conditions générales',       note:'' },
-        { key:'lu_approuve',      label:'Conditions générales — "Lu et approuvé"', note:'' },
-        { key:'protocol',         label:'Protocol (Hand over)',        note:'' },
-        { key:'decl_hon_art44',   label:"Déclaration sur l'honneur ART 44",       note:'Doit mentionner ART 44' },
-        { key:'attest_art44',     label:'Attestation TVA avec prix — ART 44',     note:'Doit mentionner ART 44' },
-        { key:'attest_sans',      label:'Attestation TVA sans prix — ART 44',     note:'Doit mentionner ART 44' },
-        { key:'carte_id',         label:'Carte ID',                   note:'' },
-        { key:'carte_banc',       label:'Carte bancaire ou relevé bancaire',      note:'' },
-        { key:'ctrl_tech',        label:'Contrôle technique',         note:'' },
-        { key:'coc',              label:'COC',                        note:'' },
-        { key:'cert_immat_1',     label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
-        { key:'cert_immat_2',     label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
-        { key:'facture_vente',    label:'Facture de vente TVA 0%',   note:'Doit mentionner Art. Contribuable exonéré art.44' },
-      ],
-
-      vat_extra: [
-        ...base_vat.filter(d => d.key !== 'decl_honneur'),
-        { key:'decl_honneur',    label:"Déclaration sur l'honneur (ou attestations TVA si ART 44)", note:'' },
-        { key:'facture_achat',   label:"Facture d'achat",            note:'' },
-        { key:'preuve_paiement', label:'Preuve de paiement',         note:'Si banque collatérale: pas de DNB, demander confirmation comptabilité / banque' },
-      ],
-
-      vat_fin: [
-        { key:'contrat',          label:"Contrat d'achat",           note:'' },
-        { key:'cond_gen',         label:'Conditions générales',       note:'' },
-        { key:'lu_approuve',      label:'Conditions générales — "Lu et approuvé"', note:'' },
-        { key:'protocol',         label:'Protocol (Hand over)',        note:'' },
-        { key:'form_autorisation',label:"Formulaire d'autorisation de reprise sous financement", note:'' },
-        { key:'attest_art44',     label:'Attestations TVA (si ART 44 uniquement)', note:'' },
-        { key:'carte_id',         label:'Carte ID',                   note:'' },
-        { key:'carte_banc',       label:'Carte bancaire',             note:'IMPORTANT: ne pas retirer bloc VAT avant que le financement soit traité' },
-        { key:'ctrl_tech',        label:'Contrôle technique',         note:'' },
-        { key:'coc',              label:'COC',                        note:'' },
-        { key:'cert_immat_1',     label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
-        { key:'cert_immat_2',     label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
-        { key:'facture_achat',    label:"Facture d'achat",            note:'' },
-        { key:'solde_ouvert',     label:'Solde ouvert du prêt',       note:'Banques collatérales uniquement' },
-        { key:'facture_vente',    label:'Facture de vente TVA (21%/50%/0%)', note:'' },
-      ],
-
-      vat_lease_non: [
-        { key:'contrat',           label:"Contrat d'achat",          note:'' },
-        { key:'cond_gen',          label:'Conditions générales',      note:'' },
-        { key:'lu_approuve',       label:'Conditions générales — "Lu et approuvé"', note:'' },
-        { key:'protocol',          label:'Protocol (Hand over)',       note:'' },
-        { key:'form_autorisation', label:"Formulaire d'autorisation de reprise sous financement", note:'' },
-        { key:'attest_art44',      label:'Attestations TVA (si ART 44 uniquement)', note:'' },
-        { key:'carte_id',          label:'Carte ID',                  note:'' },
-        { key:'carte_banc',        label:'Carte bancaire',            note:'Mettre le lead en Status 0 — WKA n\'intervient pas pour le paiement' },
-        { key:'ctrl_tech',         label:'Contrôle technique',        note:'' },
-        { key:'coc',               label:'COC',                       note:'' },
-        { key:'cert_immat_1',      label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
-        { key:'cert_immat_2',      label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
-        { key:'facture_fin_lease', label:'Facture de fin de leasing', note:'' },
-        { key:'preuve_paiement',   label:'Preuve de paiement correspondante', note:'' },
-      ],
-
-      vat_lease_oui: [
-        { key:'contrat',          label:"Contrat d'achat",           note:'' },
-        { key:'cond_gen',         label:'Conditions générales',       note:'' },
-        { key:'lu_approuve',      label:'Conditions générales — "Lu et approuvé"', note:'' },
-        { key:'protocol',         label:'Protocol (Hand over)',        note:'' },
-        { key:'form_autorisation',label:"Formulaire d'autorisation de reprise sous financement", note:'Mettre le lead en Status 20' },
-        { key:'attest_art44',     label:'Attestations TVA (si ART 44 uniquement)', note:'' },
-        { key:'carte_id',         label:'Carte ID',                   note:'' },
-        { key:'carte_banc',       label:'Carte bancaire',             note:'' },
-        { key:'ctrl_tech',        label:'Contrôle technique',         note:'' },
-        { key:'coc',              label:'COC',                        note:'' },
-        { key:'cert_immat_1',     label:"Certificat d'immatriculation — Volet 1 (Deel I / Partie I)",  note:'' },
-        { key:'cert_immat_2',     label:"Certificat d'immatriculation — Volet 2 (Deel II / Partie II)", note:'' },
-        { key:'doc_vente_tiers',  label:'Document de vente à un tiers', note:'PAS de facture d\'achat ni facture TVA — la proforma en tient lieu' },
-        { key:'proforma',         label:'Facture Proforma',           note:'À mettre dans Admin sous "Financement" et "Facture client". Évaluation obligatoirement TVA 21%' },
-      ],
-
-      diplomate: [...base_marge,
-        { key:'e705',  label:'Document E705',    note:'Si T1/T2 et utilisation > 37 mois' },
-        { key:'coa',   label:'Document CO-A',    note:'Si T1/T2 et utilisation > 37 mois. Vérifier case B (TVA ouverte → preuve de paiement requise)' },
-      ],
-
-      lux_marge: [
-        ...base_marge.filter(d => d.key !== 'cert_immat_1' && d.key !== 'cert_immat_2'),
-        { key:'desimmat', label:'Certificat de désimmatriculation (Luxembourg)', note:'Le véhicule ne doit plus être enregistré au Luxembourg' },
-      ],
-
-      lux_vat: [
-        ...base_vat.filter(d => d.key !== 'facture_vente'),
-        { key:'desimmat',    label:'Certificat de désimmatriculation (Luxembourg)', note:'' },
-        { key:'facture_vente', label:'Facture de vente TVA 0% (Art. 39)', note:'Vente intracommunautaire — pas de TVA car payée par client au Luxembourg' },
-      ],
-    };
-
-    return maps[type] || maps['marge_ord'];
-  }
-
-  // ─── Expected values ──────────────────────────────────────────
-  function getExpected() {
-    return {
-      customer: g('eC'),
-      vin:      g('eV').toUpperCase(),
-      plate:    g('eP').toUpperCase(),
-      iban:     g('eI').toUpperCase().replace(/\s/g,''),
-      address:  g('eA'),
-    };
-  }
-  function g(id) { return document.getElementById(id).value.trim(); }
-
-  // ─── Comparison ───────────────────────────────────────────────
-  function cmp(found, exp) {
-    if (!exp)   return 'neutral';
-    if (!found) return 'missing';
-    const f = found.toUpperCase().replace(/\s+/g,' ');
-    const e = exp.toUpperCase().replace(/\s+/g,' ');
-    if (f.includes(e) || e.includes(f)) return 'match';
-    // Token match: all significant tokens of expected must appear in found
-    const tokens = e.split(/[\s,]+/).filter(t => t.length > 2);
-    if (tokens.length && tokens.every(tok => f.includes(tok))) return 'match';
-    return 'mismatch';
-  }
-
-  function badge(cls, lbl) { return `<span class="b ${cls}">${lbl}</span>`; }
-  const bm = {
-    match:    () => badge('b-ok',  '✓ Correspond'),
-    mismatch: () => badge('b-err', '✗ Divergence'),
-    missing:  () => badge('b-wn',  '? Non trouvé'),
-    neutral:  () => badge('b-gr',  '— Non renseigné'),
-    ok:       () => badge('b-ok',  '✓ Présent'),
-    ko:       () => badge('b-err', '✗ Manquant'),
-    manual:   () => badge('b-gr',  '👁 Manuel'),
-    check:    () => badge('b-wn',  '? À vérifier'),
-  };
-
-  // ─── Deal type label ──────────────────────────────────────────
-  const dealLabels = {
-    marge_ord:       '✅ Marge ordinaire (> 5 ans et < 15 000 EUR)',
-    marge_extra:     '⚠️ Marge 15k et/ou < 5 ans — documents supplémentaires requis',
-    marge_fin_plus:  '⚠️ Marge en financement + 5 ans et/ou + 15k',
-    marge_fin_moins: '⚠️ Marge en financement < 5 ans et < 15k',
-    marge_deces:     '⚠️ Marge avec décès — documents héritiers requis',
-    marge_facture:   '⚠️ Marge avec facture de sortie / intermédiaire',
-    vat_plus5_moins15:'ℹ️ VAT > 5 ans et < 15k',
-    vat_art44:       'ℹ️ VAT ART 44 (0%) — mentions ART 44 obligatoires',
-    vat_extra:       '⚠️ VAT + 15k ou < 5 ans — documents supplémentaires requis',
-    vat_fin:         '⚠️ VAT + Financement',
-    vat_lease_non:   '⚠️ VAT + Lease non pris en charge par WKA',
-    vat_lease_oui:   '⚠️ VAT + Lease pris en charge par WKA',
-    diplomate:       'ℹ️ Diplomate / SHAPE',
-    lux_marge:       'ℹ️ Véhicule Luxembourgeois – Marge',
-    lux_vat:         'ℹ️ Véhicule Luxembourgeois – VAT',
-  };
-
-  // ─── Renderers ────────────────────────────────────────────────
-  function renderSummary(docs, req) {
-    const det  = req.filter(r => docs[r.key] !== null && docs[r.key] !== undefined);
-    const pres = det.filter(r => docs[r.key] === true).length;
-    const miss = det.filter(r => docs[r.key] === false).length;
-    const man  = req.filter(r => docs[r.key] === null).length;
-    document.getElementById('sumRow').innerHTML = `
-      <div class="sum-box s-ok"><div class="n">${pres}</div><div class="l">Documents présents</div></div>
-      <div class="sum-box s-err"><div class="n">${miss}</div><div class="l">Documents manquants</div></div>
-      <div class="sum-box s-neu"><div class="n">${man}</div><div class="l">Vérification manuelle</div></div>`;
-  }
-
-  function renderVehicle(p, deal) {
-    const el = document.getElementById('catBanner');
-    const lbl = dealLabels[deal] || '❓ Type indéterminé';
-    el.className = 'cat ' + (/^✅/.test(lbl) ? 'c-ok' : /^ℹ️/.test(lbl) ? 'c-un' : 'c-wn');
-    el.textContent = lbl;
-    document.getElementById('vGrid').innerHTML = `
-      <div class="vbox"><div class="l">Modèle</div><div class="v" style="font-size:12px">${p.makeModel||'—'}</div></div>
-      <div class="vbox"><div class="l">Prix d'achat</div><div class="v">${p.price||'—'}</div></div>
-      <div class="vbox"><div class="l">1ère immatriculation</div><div class="v">${p.firstReg||'—'}</div></div>
-      <div class="vbox"><div class="l">Prochain CT</div><div class="v">${p.nextCT||'—'}</div></div>
-      <div class="vbox"><div class="l">VIN</div><div class="v" style="font-size:10px;letter-spacing:.04em">${p.vin||'—'}</div></div>
-      <div class="vbox"><div class="l">Plaque</div><div class="v">${p.plate||'—'}</div></div>`;
-  }
-
-  function renderContract(p, exp) {
-    // 5 points de contrôle du contrat selon le document WKA
-    const rows = [
-      {
-        num:'1', label:'Coordonnées du client',
-        note:'Nom, adresse',
-        found: p.customer ? `${p.customer}${p.address ? ' — ' + p.address : ''}` : null,
-        exp: exp.customer || null,
-      },
-      {
-        num:'2', label:'VIN + Date 1ère immatriculation + Date prochain CT',
-        note:'Tous les trois doivent être présents et corrects',
-        found: [p.vin, p.firstReg, p.nextCT].filter(Boolean).join(' | ') || null,
-        exp: exp.vin || null,
-      },
-      {
-        num:'3', label:"Prix d'achat du véhicule",
-        note:'',
-        found: p.price || null,
-        exp: null,
-      },
-      {
-        num:'4', label:'Coordonnées bancaires (IBAN)',
-        note:'Pour le paiement au client',
-        found: p.iban ? `${p.iban}${p.bic ? ' — ' + p.bic : ''}` : null,
-        exp: exp.iban || null,
-      },
-      {
-        num:'5', label:'Signatures acheteur et vendeur',
-        note:'',
-        found: p.signatures ? 'Signatures présentes' : (p.sigVendeur ? 'Signature vendeur seulement' : p.sigAcheteur ? 'Signature acheteur seulement' : null),
-        exp: null,
-      },
-    ];
-
-    document.getElementById('contractTb').innerHTML = rows.map(r => {
-      let status;
-      if (r.num === '5') {
-        status = p.signatures ? bm.ok() : p.sigVendeur || p.sigAcheteur ? bm.check() : bm.ko();
-      } else if (r.exp) {
-        status = bm[cmp(r.found, r.exp)]();
+      const expDays = Math.abs(diffDays);
+      const expYears = expDays / 365;
+      if (expYears < 1) {
+        checks.push(chk('Expiry date','warn',`Expired ${fmt} (${expDays} days ago — less than 1 year: flagged but OK)`));
       } else {
-        status = r.found ? bm.ok() : bm.ko();
+        checks.push(chk('Expiry date','fail',`Expired ${fmt} (${(expYears).toFixed(1)} years ago — more than 1 year: NOT OK)`));
       }
-      return `<tr>
-        <td style="font-weight:700;color:var(--primary)">${r.num}</td>
-        <td><div>${r.label}</div>${r.note ? `<div class="sub">${r.note}</div>` : ''}</td>
-        <td class="mono">${r.found || '<em style="color:#9ca3af">Non trouvé</em>'}</td>
-        <td class="mono">${r.exp || '<em style="color:#9ca3af">—</em>'}</td>
-        <td>${status}</td>
-      </tr>`;
-    }).join('');
+    }
   }
 
-  function renderInfo(p, exp) {
-    const rows = [
-      { lbl:'Client',  found:p.customer, exp:exp.customer },
-      { lbl:'VIN',     found:p.vin,      exp:exp.vin      },
-      { lbl:'Plaque',  found:p.plate,    exp:exp.plate    },
-      { lbl:'IBAN',    found:p.iban,     exp:exp.iban     },
-      { lbl:'Adresse', found:p.address,  exp:exp.address  },
-    ];
-    document.getElementById('infoTb').innerHTML = rows.map(r => {
-      return `<tr>
-        <td><b>${r.lbl}</b></td>
-        <td class="mono">${r.found||'<em style="color:#9ca3af">—</em>'}</td>
-        <td class="mono">${r.exp||'<em style="color:#9ca3af">—</em>'}</td>
-        <td>${bm[cmp(r.found,r.exp)]()}</td>
-      </tr>`;
-    }).join('');
+  const allD = findDates(all);
+  if (allD.length) checks.push(chk('All dates in document','info', allD.map(d=>d.raw).join(' | ')));
+
+  return { skipped:false, checks };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER RESULTS
+// ═══════════════════════════════════════════════════════════════════════════════
+const STATUS_ICON = { pass:'✅', warn:'⚠️', fail:'🚩', info:'ℹ️' };
+const DOC_LABELS = {
+  handover:'Handover Protocol', readapp:'Read & Approved', attest:'Attestations',
+  id:'ID / Procura', reg:'Registration Certificate', tech:'Technical Control'
+};
+const DOC_ICONS = { handover:'📋', readapp:'✍️', attest:'📑', id:'🪪', reg:'📘', tech:'🔧' };
+
+function sectionStatus(result) {
+  if (result.skipped) return 'skip';
+  const c = result.checks||[];
+  if (c.some(x=>x.status==='fail')) return 'fail';
+  if (c.some(x=>x.status==='warn')) return 'warn';
+  return 'pass';
+}
+
+function renderResults(results) {
+  const container = document.getElementById('results-content');
+  container.innerHTML = '';
+
+  // Overall banner
+  const allChecks = Object.values(results).flatMap(r=>r.checks||[]);
+  const fails = allChecks.filter(c=>c.status==='fail').length;
+  const warns = allChecks.filter(c=>c.status==='warn').length;
+  const passes = allChecks.filter(c=>c.status==='pass').length;
+  const overall = fails>0?'fail':warns>0?'warn':'pass';
+
+  const banner = document.createElement('div');
+  banner.className = 'overall-banner ' + overall;
+  banner.innerHTML = `
+    <span>${overall==='pass'?'✅ All checks passed':overall==='warn'?'⚠️ Review required':'🚩 Errors found'}</span>
+    <span class="banner-counts">${passes} passed · ${warns} warnings · ${fails} errors</span>
+  `;
+  container.appendChild(banner);
+
+  // Per-document sections
+  for (const [id, result] of Object.entries(results)) {
+    const st = sectionStatus(result);
+    const stIcon = {pass:'✅',warn:'⚠️',fail:'🚩',skip:'—'}[st];
+    const hdrClass = {pass:'dh-pass',warn:'dh-warn',fail:'dh-fail',skip:'dh-skip'}[st];
+
+    const section = document.createElement('div');
+    section.className = 'doc-result';
+
+    const checks = result.checks||[];
+    const bodyId = 'body-' + id;
+
+    section.innerHTML = `
+      <div class="doc-result-header ${hdrClass}" onclick="toggleSection('${bodyId}')">
+        <span>${DOC_ICONS[id]||'📄'}</span>
+        <span>${stIcon} ${DOC_LABELS[id]||id}</span>
+        ${result.skipped ? '<span style="font-weight:400;opacity:.5;font-size:11px;margin-left:auto">Not uploaded</span>' : ''}
+        <span style="margin-left:auto;opacity:.4;font-size:11px">▾</span>
+      </div>
+      <div class="doc-result-body" id="${bodyId}">
+        <ul class="checks">
+          ${checks.map(c=>`
+            <li>
+              <span class="ci">${STATUS_ICON[c.status]||'•'}</span>
+              <span class="cl"><strong>${escHtml(c.label)}:</strong> ${escHtml(c.detail)}</span>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    `;
+    container.appendChild(section);
+  }
+}
+
+function toggleSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display==='none' ? '' : 'none';
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════════════════════════════════════════
+async function runVerification() {
+  const name  = document.getElementById('client-name').value.trim();
+  const vin   = document.getElementById('vin').value.trim().toUpperCase().replace(/\s/g,'');
+  const plate = document.getElementById('plate').value.trim().toUpperCase();
+  const iban  = document.getElementById('iban').value.trim();
+  const useOCR = document.getElementById('ocr-toggle').checked;
+
+  if (!name||!vin||!plate||!iban) {
+    alert('Please fill in all four agent fields: Client Name, VIN, License Plate, and IBAN.');
+    return;
   }
 
-  function renderDocs(docs, req) {
-    document.getElementById('docTb').innerHTML = req.map(d => {
-      const val = docs[d.key];
-      let cell, sb;
-      if (val === null)        { cell='<em style="color:#9ca3af">Image/scan</em>'; sb=bm.manual(); }
-      else if (val === true)   { cell='Oui'; sb=bm.ok(); }
-      else if (val === false)  { cell='Non'; sb=bm.ko(); }
-      else                     { cell='<em style="color:#9ca3af">—</em>'; sb=bm.check(); }
+  const btn = document.getElementById('verify-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Verifying…';
 
-      return `<tr>
-        <td>
-          <div>${d.label}</div>
-          ${d.note ? `<div class="sub">ℹ️ ${d.note}</div>` : ''}
-        </td>
-        <td>${badge('b-gr','Requis')}</td>
-        <td>${cell}</td>
-        <td>${sb}</td>
-      </tr>`;
-    }).join('');
+  const results = {};
+  try {
+    results.handover = await verifyHandover(uploadedFiles.handover, name, vin, plate, useOCR);
+    results.readapp  = await verifyReadApproved(uploadedFiles.readapp, name, useOCR);
+    results.attest   = await verifyAttestations(uploadedFiles.attest, name, vin, useOCR);
+    results.id       = await verifyIDProcura(uploadedFiles.id, name, vin, iban, useOCR);
+    results.reg      = await verifyRegistration(uploadedFiles.reg, name, vin, plate, useOCR);
+    results.tech     = await verifyTechControl(uploadedFiles.tech, vin, plate, useOCR);
+  } catch(err) {
+    alert('Verification error: ' + err.message);
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '▶ Run Verification';
   }
+
+  document.getElementById('results').style.display = '';
+  renderResults(results);
+  document.getElementById('results').scrollIntoView({ behavior:'smooth' });
+}
+
+// Init
+renderZones();
+document.getElementById('verify-btn').addEventListener('click', runVerification);
 </script>
 </body>
 </html>
